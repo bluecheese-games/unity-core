@@ -1,2 +1,2 @@
 # unity-core
-Core libraries for Unity app
+Core libraries for Unity applications
