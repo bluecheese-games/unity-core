@@ -1,0 +1,14 @@
+{
+    "name": "BlueCheese.Unity.Core",
+    "rootNamespace": "BlueCheese.Unity.Core",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
