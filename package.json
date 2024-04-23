@@ -1,0 +1,16 @@
+{
+  "name": "games.bluecheese.unity-core",
+  "displayName": "BlueCheese Unity Core",
+  "version": "1.0.0",
+  "unity": "2021.1",
+  "description": "Core libraries for Unity applications.",
+  "keywords": [ "core", "library", "unity", "services", "signals", "FSM", "utilities" ],
+  "category": "libraries",
+  "dependencies": {},
+  "samples": [
+  ],
+  "author": {
+    "name": "Pierre Martin",
+    "url": "https://github.com/bluecheese-games"
+  }
+}
