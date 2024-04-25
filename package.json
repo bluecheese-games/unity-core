@@ -6,10 +6,7 @@
   "description": "Core libraries for Unity applications.",
   "keywords": [ "core", "library", "unity", "services", "signals", "FSM", "utilities" ],
   "category": "libraries",
-  "dependencies": {
-	  "com.unity.textmeshpro": "3.0.8",
-	  "com.unity.modules.jsonserialize": "1.0.0"
-  },
+  "dependencies": {},
   "samples": [
   ],
   "author": {
