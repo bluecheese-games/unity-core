@@ -1,12 +1,15 @@
 {
   "name": "games.bluecheese.unity-core",
   "displayName": "BlueCheese Unity Core",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "unity": "2021.1",
   "description": "Core libraries for Unity applications.",
   "keywords": [ "core", "library", "unity", "services", "signals", "FSM", "utilities" ],
   "category": "libraries",
-  "dependencies": {},
+  "dependencies": {
+	  "com.unity.textmeshpro": "3.0.8",
+	  "com.unity.modules.jsonserialize": "1.0.0"
+  },
   "samples": [
   ],
   "author": {
