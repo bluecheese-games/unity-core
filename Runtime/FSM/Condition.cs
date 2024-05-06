@@ -1,4 +1,5 @@
 using System;
+using static BlueCheese.Unity.Core.FSM.Condition;
 
 namespace BlueCheese.Unity.Core.FSM
 {
@@ -80,6 +81,22 @@ namespace BlueCheese.Unity.Core.FSM
             Operator.Less => currentValue < targetValue,
             Operator.LessOrEqual => currentValue <= targetValue,
             _ => false,
+        };
+
+        
+    }
+
+    public static class OperatorExtensions
+    {
+        public static string ToFriendlyString(this Operator op) => op switch
+        {
+            Operator.Equals => "==",
+            Operator.NotEquals => "!=",
+            Operator.Greater => ">",
+            Operator.GreaterOrEqual => ">=",
+            Operator.Less => "<",
+            Operator.LessOrEqual => "<=",
+            _ => op.ToString(),
         };
     }
 }
