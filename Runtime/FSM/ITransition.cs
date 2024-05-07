@@ -1,4 +1,8 @@
-﻿namespace BlueCheese.Unity.Core.FSM
+//
+// Copyright (c) 2024 BlueCheese Games All rights reserved
+//
+
+namespace BlueCheese.Unity.Core.FSM
 {
     public interface ITransition
     {

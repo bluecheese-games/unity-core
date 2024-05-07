@@ -1,4 +1,8 @@
-﻿using System;
+//
+// Copyright (c) 2024 BlueCheese Games All rights reserved
+//
+
+using System;
 using System.Collections.Generic;
 
 namespace BlueCheese.Unity.Core.FSM

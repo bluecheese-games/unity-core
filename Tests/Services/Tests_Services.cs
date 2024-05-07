@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2024 BlueCheese Games All rights reserved
+//
+
 using NUnit.Framework;
 using System;
 using BlueCheese.Unity.Core.Services;
