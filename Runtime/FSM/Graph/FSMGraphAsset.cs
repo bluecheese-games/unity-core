@@ -193,7 +193,7 @@ namespace BlueCheese.Unity.Core.FSM.Graph
             public float TargetFloatValue;
 
             private Dictionary<string, GraphParameter> _parameters;
-            private string[] ParametersList => _parameters != null ? _parameters.Keys.ToArray() : new string[0];
+            private string[] ParametersList => _parameters != null ? _parameters.Keys.ToArray() : new string[] { "-no parameter-" };
             private Condition.Type ParameterType => _parameters != null && _parameters.ContainsKey(ParameterName) ? _parameters[ParameterName].Type : Condition.Type.Predicate;
             private bool IsNotTrigger => ParameterType != Condition.Type.Trigger;
 
