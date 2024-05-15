@@ -17,13 +17,26 @@ namespace BlueCheese.Unity.Core.FSM.Graph
         public List<GraphTransition> Transitions;
         public List<GraphParameter> Parameters;
 
+        private GraphState defaultState;
+        private int stateCount = -1;
+
         private void OnValidate()
         {
             if (States != null)
             {
+                if (defaultState != null && !States.Contains(defaultState))
+                {
+                    defaultState = null;
+                }
+                if (stateCount > -1 && stateCount != States.Count)
+                {
+                    // New state
+                    States.Last().Name += " copy";
+                }
+                stateCount = States.Count;
                 foreach (GraphState state in States)
                 {
-                    state.OnValidate();
+                    state.OnValidate(this);
                 }
             }
             if (Parameters != null)
@@ -52,9 +65,38 @@ namespace BlueCheese.Unity.Core.FSM.Graph
             [HideInInspector]
             public Vector2 Position;
 
-            public void OnValidate()
+            public void OnValidate(FSMGraphAsset graph)
             {
-                DisplayName = $"{Name} {(IsDefault ? "[Default]" : "")}";
+                if (IsDefault)
+                {
+                    if (graph.defaultState == null)
+                    {
+                        graph.defaultState = this;
+                    }
+                    else
+                    {
+                        if (graph.defaultState.Name != Name)
+                        {
+                            graph.defaultState.IsDefault = false;
+                            graph.defaultState.OnValidate(graph);
+                            graph.defaultState = this;
+                        }
+                    }
+                }
+                else
+                {
+                    if (graph.defaultState == null)
+                    {
+                        IsDefault = true;
+                        graph.defaultState = this;
+                    }
+                    else if (graph.defaultState.Name == Name)
+                    {
+                        IsDefault = true;
+                    }
+                }
+
+                DisplayName = $"{Name}{(IsDefault ? " [Default]" : "")}";
             }
         }
 
