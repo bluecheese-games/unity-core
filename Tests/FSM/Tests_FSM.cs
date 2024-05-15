@@ -529,6 +529,28 @@ namespace Tests.FSM
         }
 
         [Test]
+        public void Test_Transition_Evaluate_Trigger_WithExitTime()
+        {
+            // Arrange
+            var stateA = new MockState("A");
+            var stateB = new MockState("B");
+            stateMachine = new StateMachine.Builder()
+                .AddState(stateA, true)
+                .AddState(stateB)
+                .AddTransition(stateA.Name, stateB.Name, out var transition, 1, Condition.CreateTriggerCondition("test"))
+                .Build();
+            stateMachine.Start();
+
+            // Act
+            stateMachine.SetTrigger("test");
+            stateMachine.Update(0.5f);
+            stateMachine.Update(1f);
+
+            // Assert
+            Assert.That(stateMachine.CurrentState.Name, Is.EqualTo("B"));
+        }
+
+        [Test]
         public void Test_Transition_Evaluate_Bool()
         {
             // Arrange

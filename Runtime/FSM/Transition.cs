@@ -20,14 +20,13 @@ namespace BlueCheese.Unity.Core.FSM
 
         public bool Evaluate(IStateMachine stateMachine, out IState nextstate, out float overTime)
         {
-            overTime = stateMachine.StateTime - _exitTime;
+            overTime = 0f;
             nextstate = null;
             if (_exitTime > 0f && stateMachine.StateTime < _exitTime)
             {
                 return false;
             }
 
-            overTime = 0f;
             if (_conditions != null && _conditions.Length > 0)
             {
                 foreach (var condition in _conditions)
