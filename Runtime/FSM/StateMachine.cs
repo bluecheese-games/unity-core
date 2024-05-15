@@ -215,18 +215,14 @@ namespace BlueCheese.Unity.Core.FSM
                 }
             }
 
-            IState nextState = null;
-            float overTime = 0f;
             foreach (var transition in transitions)
             {
-                if (transition.Evaluate(this, out nextState, out overTime))
+                if (transition.Evaluate(this, out IState nextState, out float overTime))
                 {
+                    SetState(nextState, overTime);
                     break;
                 }
             }
-
-            ResetTriggers();
-            SetState(nextState, overTime);
         }
 
         private void SetState(IState nextState, float nextStateTime = 0f)
@@ -240,6 +236,8 @@ namespace BlueCheese.Unity.Core.FSM
             CurrentState = nextState;
             StateTime = 0f;
             CurrentState.OnEnter();
+
+            ResetTriggers();
 
             Update(nextStateTime);
         }
