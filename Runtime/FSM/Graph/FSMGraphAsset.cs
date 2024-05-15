@@ -219,15 +219,19 @@ namespace BlueCheese.Unity.Core.FSM.Graph
 
             public void OnValidate(Dictionary<string, GraphParameter> parameters)
             {
-                if (!parameters.ContainsKey(ParameterName))
+                if (parameters == null)
                 {
-                    DisplayName = ParameterName;
                     return;
                 }
 
                 _parameters = parameters;
 
-                var parameter = parameters[ParameterName];
+                if (!_parameters.ContainsKey(ParameterName))
+                {
+                    ParameterName = _parameters.First().Value.Name;
+                }
+
+                var parameter = _parameters[ParameterName];
                 DisplayName = parameter.Type switch
                 {
                     Condition.Type.Trigger => $"-- {parameter.Name} --",
