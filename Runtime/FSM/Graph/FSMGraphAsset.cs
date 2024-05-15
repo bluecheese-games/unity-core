@@ -172,7 +172,7 @@ namespace BlueCheese.Unity.Core.FSM.Graph
             [HideInInspector]
             public string DisplayName;
 
-            [Dropdown(nameof(_parametersList))]
+            [Dropdown(nameof(ParametersList))]
             [OnValueChanged(nameof(Refresh))]
             public string ParameterName;
 
@@ -180,22 +180,22 @@ namespace BlueCheese.Unity.Core.FSM.Graph
             [AllowNesting]
             public Condition.Operator Operator;
 
-            [ShowIf(nameof(_parameterType), Condition.Type.Bool)]
+            [ShowIf(nameof(ParameterType), Condition.Type.Bool)]
             [AllowNesting]
             public bool TargetBoolValue;
 
-            [ShowIf(nameof(_parameterType), Condition.Type.Int)]
+            [ShowIf(nameof(ParameterType), Condition.Type.Int)]
             [AllowNesting]
             public int TargetIntValue;
 
-            [ShowIf(nameof(_parameterType), Condition.Type.Float)]
+            [ShowIf(nameof(ParameterType), Condition.Type.Float)]
             [AllowNesting]
             public float TargetFloatValue;
 
             private Dictionary<string, GraphParameter> _parameters;
-            private string[] _parametersList => _parameters.Keys.ToArray();
-            private Condition.Type _parameterType => _parameters.ContainsKey(ParameterName) ? _parameters[ParameterName].Type : Condition.Type.Predicate;
-            private bool IsNotTrigger => _parameterType != Condition.Type.Trigger;
+            private string[] ParametersList => _parameters != null ? _parameters.Keys.ToArray() : new string[0];
+            private Condition.Type ParameterType => _parameters != null && _parameters.ContainsKey(ParameterName) ? _parameters[ParameterName].Type : Condition.Type.Predicate;
+            private bool IsNotTrigger => ParameterType != Condition.Type.Trigger;
 
             private void Refresh() => OnValidate(_parameters);
 
