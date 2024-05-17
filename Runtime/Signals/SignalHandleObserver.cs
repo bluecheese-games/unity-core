@@ -6,9 +6,15 @@ using UnityEngine;
 
 namespace Core.Signals
 {
+    [HideInInspector]
     public class SignalHandleObserver : MonoBehaviour
     {
         private object _handle;
+
+        private void Awake()
+        {
+            hideFlags = HideFlags.HideInInspector;
+        }
 
         public static void TryAddObserver(object handle)
         {
