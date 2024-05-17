@@ -242,12 +242,11 @@ namespace BlueCheese.Unity.Core.FSM
             // Switch current state
             CurrentState = nextState;
             StateTime = 0f;
+            ResetTriggers();
 
             // Enter new state
             CurrentState.OnEnter();
             OnEnterState?.Invoke(CurrentState);
-
-            ResetTriggers();
 
             Update(nextStateTime);
         }
