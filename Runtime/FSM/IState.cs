@@ -2,11 +2,9 @@
 // Copyright (c) 2024 BlueCheese Games All rights reserved
 //
 
-using System;
-
 namespace BlueCheese.Unity.Core.FSM
 {
-    public interface IState : IDisposable
+    public interface IState
     {
         public string Name { get; }
 

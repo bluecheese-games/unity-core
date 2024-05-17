@@ -20,9 +20,6 @@ namespace BlueCheese.Unity.Core.FSM.Mono
     public class EnterStateEvent : UnityEvent<IState> { }
 
     [Serializable]
-    public class UpdateStateEvent : UnityEvent<IState, float> { }
-
-    [Serializable]
     public class ExitStateEvent : UnityEvent<IState> { }
 
     public class StateMachineController : MonoBehaviour
@@ -33,7 +30,6 @@ namespace BlueCheese.Unity.Core.FSM.Mono
 
         [Space]
         [SerializeField] private EnterStateEvent _onEnterState;
-        [SerializeField] private UpdateStateEvent _onUpdateState;
         [SerializeField] private ExitStateEvent _onExitState;
 
         private StateMachine _stateMachine;
@@ -53,14 +49,8 @@ namespace BlueCheese.Unity.Core.FSM.Mono
             }
 
             _stateMachine = graph.ToStateMachine();
-
-            foreach (var iState in _stateMachine.States)
-            {
-                var state = (State)iState;
-                state.OnEnterState += _onEnterState.Invoke;
-                state.OnUpdateState += _onUpdateState.Invoke;
-                state.OnExitState += _onExitState.Invoke;
-            }
+            _stateMachine.OnEnterState += _onEnterState.Invoke;
+            _stateMachine.OnExitState += _onExitState.Invoke;
         }
 
         private void Start()
