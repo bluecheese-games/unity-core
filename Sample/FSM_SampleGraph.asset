@@ -17,11 +17,11 @@ MonoBehaviour:
     Name: intro
     IsDefault: 1
     Position: {x: 0, y: 0}
-  - DisplayName: 'run '
+  - DisplayName: run
     Name: run
     IsDefault: 0
     Position: {x: 0, y: 0}
-  - DisplayName: 'over '
+  - DisplayName: over
     Name: over
     IsDefault: 0
     Position: {x: 0, y: 0}

@@ -37,13 +37,16 @@ namespace BlueCheese.Unity.Core.FSM
         /// </summary>
         public IReadOnlyList<IState> States => new List<IState>(_states.Values);
 
-        private readonly Dictionary<string, IState> _states = new Dictionary<string, IState>();
-        private readonly Dictionary<IState, List<ITransition>> _transitions = new Dictionary<IState, List<ITransition>>();
-        private readonly List<ITransition> _anyTransitions = new List<ITransition>();
-        private readonly Dictionary<string, bool> _boolParameters = new Dictionary<string, bool>();
-        private readonly Dictionary<string, int> _intParameters = new Dictionary<string, int>();
-        private readonly Dictionary<string, float> _floatParameters = new Dictionary<string, float>();
-        private readonly HashSet<string> _triggers = new HashSet<string>();
+        public event Action<IState> OnEnterState;
+        public event Action<IState> OnExitState;
+
+        private readonly Dictionary<string, IState> _states = new();
+        private readonly Dictionary<IState, List<ITransition>> _transitions = new();
+        private readonly List<ITransition> _anyTransitions = new();
+        private readonly Dictionary<string, bool> _boolParameters = new();
+        private readonly Dictionary<string, int> _intParameters = new();
+        private readonly Dictionary<string, float> _floatParameters = new();
+        private readonly HashSet<string> _triggers = new();
 
         private StateMachine() { }
 
@@ -232,10 +235,17 @@ namespace BlueCheese.Unity.Core.FSM
                 return;
             }
 
+            // Exit previous state
             CurrentState?.OnExit();
+            OnExitState?.Invoke(CurrentState);
+
+            // Switch current state
             CurrentState = nextState;
             StateTime = 0f;
+
+            // Enter new state
             CurrentState.OnEnter();
+            OnEnterState?.Invoke(CurrentState);
 
             ResetTriggers();
 
@@ -273,10 +283,6 @@ namespace BlueCheese.Unity.Core.FSM
 
         private void Reset()
         {
-            foreach (var state in _states.Values)
-            {
-                state.Dispose();
-            }
             _states.Clear();
             _transitions.Clear();
             _anyTransitions.Clear();
