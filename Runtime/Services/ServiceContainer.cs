@@ -7,7 +7,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Reflection;
 
-namespace BlueCheese.Unity.Core.Services
+namespace BlueCheese.Core.Services
 {
     /// <summary>
     /// The ServiceContainer class main purpose is to provide a simple way to register and resolve services.

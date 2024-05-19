@@ -3,12 +3,12 @@
 //
 
 using System;
-using BlueCheese.Unity.Core.FSM.Graph;
+using BlueCheese.Core.FSM.Graph;
 using UnityEditor;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine.UIElements;
 
-namespace BlueCheese.Unity.Core.FSM.Editor
+namespace BlueCheese.Core.FSM.Editor
 {
     public class FSMGraphEditorWindow : EditorWindow
     {

@@ -2,11 +2,11 @@
 // Copyright (c) 2024 BlueCheese Games All rights reserved
 //
 
-using BlueCheese.Unity.Core.FSM.Mono;
+using BlueCheese.Core.FSM.Mono;
 using TMPro;
 using UnityEngine;
 
-namespace BlueCheese.Unity.Core.FSM.Sample
+namespace BlueCheese.Core.FSM.Sample
 {
     public class SampleController : MonoBehaviour
     {

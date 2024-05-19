@@ -5,7 +5,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace BlueCheese.Unity.Core.FSM
+namespace BlueCheese.Core.FSM
 {
     public interface IStateMachine : IDisposable
     {

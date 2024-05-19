@@ -4,7 +4,7 @@
 
 using System;
 
-namespace BlueCheese.Unity.Core.Services
+namespace BlueCheese.Core.Services
 {
     public interface IService
     {

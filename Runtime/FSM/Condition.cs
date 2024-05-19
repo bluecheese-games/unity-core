@@ -3,9 +3,9 @@
 //
 
 using System;
-using static BlueCheese.Unity.Core.FSM.Condition;
+using static BlueCheese.Core.FSM.Condition;
 
-namespace BlueCheese.Unity.Core.FSM
+namespace BlueCheese.Core.FSM
 {
     public class Condition : ICondition
     {
