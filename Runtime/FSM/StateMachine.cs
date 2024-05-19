@@ -5,7 +5,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace BlueCheese.Unity.Core.FSM
+namespace BlueCheese.Core.FSM
 {
     /// <summary>
     /// Represents a state machine that manages the transitions between different states.

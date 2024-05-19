@@ -10,7 +10,7 @@ using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace BlueCheese.Unity.Core.FSM.Graph
+namespace BlueCheese.Core.FSM.Graph
 {
     public class FSMGraphView : GraphView
     {

@@ -3,11 +3,11 @@
 //
 
 using System;
-using BlueCheese.Unity.Core.FSM.Graph;
+using BlueCheese.Core.FSM.Graph;
 using UnityEngine;
 using UnityEngine.Events;
 
-namespace BlueCheese.Unity.Core.FSM.Mono
+namespace BlueCheese.Core.FSM.Mono
 {
     public enum UpdateMode
     {

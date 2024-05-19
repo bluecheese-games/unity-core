@@ -2,7 +2,7 @@
 // Copyright (c) 2024 BlueCheese Games All rights reserved
 //
 
-using BlueCheese.Unity.Core.FSM;
+using BlueCheese.Core.FSM;
 using NUnit.Framework;
 using System;
 

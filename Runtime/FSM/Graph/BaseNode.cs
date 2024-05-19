@@ -6,7 +6,7 @@ using System;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
-namespace BlueCheese.Unity.Core.FSM.Graph
+namespace BlueCheese.Core.FSM.Graph
 {
     public class BaseNode : Node
     {

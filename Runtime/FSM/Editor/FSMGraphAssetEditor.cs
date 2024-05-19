@@ -2,12 +2,12 @@
 // Copyright (c) 2024 BlueCheese Games All rights reserved
 //
 
-using BlueCheese.Unity.Core.FSM.Graph;
+using BlueCheese.Core.FSM.Graph;
 using UnityEditor.Callbacks;
 using UnityEditor;
 using UnityEngine;
 
-namespace BlueCheese.Unity.Core.FSM.Editor
+namespace BlueCheese.Core.FSM.Editor
 {
     [CustomEditor(typeof(FSMGraphAsset))]
     public class FSMGraphAssetEditor : UnityEditor.Editor

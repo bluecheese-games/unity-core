@@ -5,7 +5,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace BlueCheese.Unity.Core.Services
+namespace BlueCheese.Core.Services
 {
 
     public partial class ServiceContainer

@@ -8,7 +8,7 @@ using System.Linq;
 using UnityEngine;
 using NaughtyAttributes;
 
-namespace BlueCheese.Unity.Core.FSM.Graph
+namespace BlueCheese.Core.FSM.Graph
 {
     [CreateAssetMenu(fileName = "FSMGraph", menuName = "FSM/Graph")]
     public class FSMGraphAsset : ScriptableObject
