@@ -1,0 +1,18 @@
+{
+    "name": "BlueCheese.Core.Config.Editor",
+    "rootNamespace": "BlueCheese.Core.Config.Editor",
+    "references": [
+        "GUID:f6ecf9bcf81d8e245a50ec0ac247ad60"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
