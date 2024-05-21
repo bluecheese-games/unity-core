@@ -3,23 +3,24 @@
 //
 
 using UnityEngine;
+using UnityEditor;
 
 namespace BlueCheese.Core.Config.Editor
 {
     public static class ConfigMenu
     {
-        [UnityEditor.MenuItem(itemName: "Config/Edit")]
+        [MenuItem(itemName: "Config/Edit")]
         private static void EditConfigData()
         {
             var configManager = FindConfigAssetsManager();
             if (configManager != null)
             {
-                UnityEditor.EditorUtility.FocusProjectWindow();
-                UnityEditor.AssetDatabase.OpenAsset(configManager);
+                EditorUtility.FocusProjectWindow();
+                AssetDatabase.OpenAsset(configManager);
             }
         }
 
-        [UnityEditor.MenuItem(itemName: "Config/Update Generated Code")]
+        [MenuItem(itemName: "Config/Update Generated Code")]
         private static void GenerateConfigCode()
         {
             var configManager = FindConfigAssetsManager();
