@@ -31,16 +31,12 @@ namespace BlueCheese.Core.Config.Editor
 
         private static ConfigAssetsManager FindConfigAssetsManager()
         {
-            var assets = Resources.FindObjectsOfTypeAll<ConfigAssetsManager>();
-            if (assets.Length > 0)
-            {
-                return assets[0];
-            }
-            else
+            var configManager = Resources.Load<ConfigAssetsManager>("ConfigManager");
+            if (!configManager)
             {
                 Debug.LogWarning("You first need to create a Config Manager in a Resources folder");
             }
-            return null;
+            return configManager;
         }
     }
 }
