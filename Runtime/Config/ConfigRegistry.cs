@@ -3,7 +3,6 @@
 //
 
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace BlueCheese.Core.Config
@@ -30,7 +29,7 @@ namespace BlueCheese.Core.Config
 
         private ConfigRegistry()
         {
-            var assetsManager = Resources.FindObjectsOfTypeAll<ConfigAssetsManager>().FirstOrDefault();
+            var assetsManager = Resources.Load<ConfigAssetsManager>("ConfigManager");
             if (assetsManager != null)
             {
                 Load(assetsManager.ConfigAssets);
