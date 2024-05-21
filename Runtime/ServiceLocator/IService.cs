@@ -4,7 +4,7 @@
 
 using System;
 
-namespace BlueCheese.Core.Services
+namespace BlueCheese.Core.ServiceLocator
 {
     public interface IService
     {

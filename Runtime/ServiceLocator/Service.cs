@@ -5,7 +5,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace BlueCheese.Core.Services
+namespace BlueCheese.Core.ServiceLocator
 {
 
     public partial class ServiceContainer
