@@ -10,6 +10,12 @@ namespace BlueCheese.Core.Config
 {
     public class ConfigRegistry
     {
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
+        private static void ReloadDomain()
+        {
+            _instance = null;
+        }
+
         private readonly Dictionary<string, ConfigItem> _items = new();
 
         private bool _isLoaded = false;
