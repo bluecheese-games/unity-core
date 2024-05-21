@@ -18,8 +18,6 @@ namespace BlueCheese.Core.Config
 
         private readonly Dictionary<string, ConfigItem> _items = new();
 
-        private bool _isLoaded = false;
-
         private static ConfigRegistry _instance;
         public static ConfigRegistry Instance
         {
@@ -30,25 +28,16 @@ namespace BlueCheese.Core.Config
             }
         }
 
-        private ConfigRegistry() { }
-
-        private void EnsureItemsAreLoaded()
+        private ConfigRegistry()
         {
-            if (_isLoaded)
-            {
-                return;
-            }
-
             var assetsManager = Resources.FindObjectsOfTypeAll<ConfigAssetsManager>().FirstOrDefault();
             if (assetsManager != null)
             {
                 Load(assetsManager.ConfigAssets);
             }
-
-            _isLoaded = true;
         }
 
-        public void Load(params ConfigAsset[] assets)
+        private void Load(params ConfigAsset[] assets)
         {
             foreach (var asset in assets)
             {
@@ -141,8 +130,6 @@ namespace BlueCheese.Core.Config
 
         private ConfigItem GetItem(string key, bool createIfNotExists = false)
         {
-            EnsureItemsAreLoaded();
-
             if (!_items.ContainsKey(key))
             {
                 if (createIfNotExists == false)
