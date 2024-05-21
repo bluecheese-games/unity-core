@@ -4,7 +4,7 @@
 
 using NUnit.Framework;
 using System;
-using BlueCheese.Core.Services;
+using BlueCheese.Core.ServiceLocator;
 
 namespace Tests.Services
 {
