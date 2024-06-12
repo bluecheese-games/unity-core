@@ -27,8 +27,8 @@ namespace BlueCheese.Core.ServiceLocator
     {
         private static readonly ServiceContainer _defaultContainer = new();
 
-        private readonly ConcurrentDictionary<Type, IService> _services = new();
-        private readonly ConcurrentDictionary<Type, IService> _decoratedServices = new();
+        private readonly ConcurrentDictionary<Type, Service> _services = new();
+        private readonly ConcurrentDictionary<Type, Service> _decoratedServices = new();
 
         /// <summary>
         /// Reference to the default services container.
@@ -61,16 +61,16 @@ namespace BlueCheese.Core.ServiceLocator
         /// <typeparam name="TAbstractService">The abstact Type of the service, it will be used as a key to store and resolve the service.</typeparam>
         /// <typeparam name="TConcreteService">The concrete Type of the service.</typeparam>
         public IService Register<TAbstractService, TConcreteService>() where TConcreteService : class, TAbstractService
-        {
-            Type abstractType = typeof(TAbstractService);
-            Type concreteType = typeof(TConcreteService);
+            => Register(typeof(TAbstractService), typeof(TConcreteService));
 
-            return Register(abstractType, concreteType);
-        }
-
+        /// <summary>
+        /// Register a service using abstract type.
+        /// </summary>
+        /// <param name="abstractType">The abstact Type of the service, it will be used as a key to store and resolve the service.</param>
+        /// <param name="concreteType">The concrete Type of the service.</param>
         public IService Register(Type abstractType, Type concreteType)
         {
-            var service = new Service(this, concreteType);
+            var service = GetServiceWithConcreteType(concreteType) ?? new Service(this, concreteType);
             _services[abstractType] = service;
             return service;
         }
@@ -107,7 +107,7 @@ namespace BlueCheese.Core.ServiceLocator
                 throw new Exception($"Cannot register decorator for {abstractType} because the service is not registered.");
             }
 
-            IService decoratedService = _services[abstractType];
+            Service decoratedService = _services[abstractType];
             var decoratorService = new Service(this, typeof(TDecorator));
             _services[abstractType] = decoratorService;
             _decoratedServices[abstractType] = decoratedService;
@@ -120,11 +120,11 @@ namespace BlueCheese.Core.ServiceLocator
         /// </summary>
         public void Startup()
         {
-            foreach (IService service in _decoratedServices.Values)
+            foreach (var service in _decoratedServices.Values)
             {
                 service.Startup();
             }
-            foreach (IService service in _services.Values)
+            foreach (var service in _services.Values)
             {
                 service.Startup();
             }
@@ -135,7 +135,7 @@ namespace BlueCheese.Core.ServiceLocator
         /// </summary>
         public void Shutdown()
         {
-            foreach (IService service in _services.Values)
+            foreach (var service in _services.Values)
             {
                 service.Shutdown();
             }
@@ -154,7 +154,7 @@ namespace BlueCheese.Core.ServiceLocator
             return (TService)ResolveService(typeof(TService));
         }
 
-        private object ResolveService(Type abstractType, Type constructedService = null, IService service = null)
+        private object ResolveService(Type abstractType, Type constructedService = null, Service service = null)
         {
             if (typeof(IOptions).IsAssignableFrom(abstractType))
             {
@@ -189,7 +189,7 @@ namespace BlueCheese.Core.ServiceLocator
             return services[keyType].GetInstance(genericParameterType);
         }
 
-        private object[] ResolveParameters(Type concreteType, IService service)
+        private object[] ResolveParameters(Type concreteType, Service service)
         {
             ConstructorInfo constructor = concreteType.GetConstructors().SingleOrDefault();
             if (constructor == null)
@@ -221,6 +221,11 @@ namespace BlueCheese.Core.ServiceLocator
                 field.SetValue(instance, ResolveService(field.FieldType));
             }
             return instance;
+        }
+
+        private Service GetServiceWithConcreteType(Type concreteType)
+        {
+            return _services.Values.FirstOrDefault(s => s.HasConcreteType(concreteType));
         }
     }
 
