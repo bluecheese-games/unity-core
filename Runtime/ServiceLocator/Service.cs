@@ -16,10 +16,10 @@ namespace BlueCheese.Core.ServiceLocator
             private readonly Type _concreteType;
             private bool _isLazy;
             private Scope _scope;
-            private readonly Dictionary<Type, object> _singletons;
+            private readonly Dictionary<Type, object> _instances;
             private Func<IOptions> _optionFunc;
 
-            IOptions IService.Options => _optionFunc != null ? _optionFunc() : null;
+            internal IOptions Options => _optionFunc != null ? _optionFunc() : null;
 
             /// <summary>
             /// Create a service in the specified container using a concrete type
@@ -30,7 +30,7 @@ namespace BlueCheese.Core.ServiceLocator
                 _concreteType = concreteType;
                 _isLazy = false;
                 _scope = Scope.Singleton;
-                _singletons = new Dictionary<Type, object>();
+                _instances = new Dictionary<Type, object>();
             }
 
             /// <summary>
@@ -40,7 +40,7 @@ namespace BlueCheese.Core.ServiceLocator
             {
                 _container = container;
                 _concreteType = instance.GetType();
-                _singletons = new Dictionary<Type, object>
+                _instances = new Dictionary<Type, object>
                 {
                     [_concreteType] = instance
                 };
@@ -53,7 +53,7 @@ namespace BlueCheese.Core.ServiceLocator
             /// </summary>
             public IService AsLazy()
             {
-                if (_singletons.ContainsKey(_concreteType))
+                if (_instances.ContainsKey(_concreteType))
                 {
                     throw new InvalidOperationException("Services registered using instance should be non-lazy.");
                 }
@@ -83,7 +83,7 @@ namespace BlueCheese.Core.ServiceLocator
             /// </summary>
             public void AsTransient()
             {
-                if (_singletons.ContainsKey(_concreteType))
+                if (_instances.ContainsKey(_concreteType))
                 {
                     throw new InvalidOperationException("Services registered using instance should be singletons.");
                 }
@@ -107,38 +107,38 @@ namespace BlueCheese.Core.ServiceLocator
                 }
 
                 _scope = Scope.Singleton;
-                _singletons[_concreteType] = instance;
+                _instances[_concreteType] = instance;
                 _isLazy = false;
             }
 
-            public IService UseOptions(Func<IOptions> optionsFunc)
+            public IService WithOptions(Func<IOptions> optionsFunc)
             {
                 _optionFunc = optionsFunc;
                 return this;
             }
 
-            void IService.Startup()
+            internal void Startup()
             {
                 if (_isLazy) return;
                 if (_scope != Scope.Singleton) return;
-                if (_singletons.ContainsKey(_concreteType)) return;
+                if (_instances.ContainsKey(_concreteType)) return;
                 if (_concreteType.IsGenericType) return;
 
                 // Force singleton instantiation
-                ((IService)this).GetInstance();
+                GetInstance(null);
             }
 
-            object IService.GetInstance(Type genericParameterType)
+            internal object GetInstance(Type genericParameterType)
             {
                 if (_scope == Scope.Singleton)
                 {
                     Type keyType = genericParameterType ?? _concreteType;
-                    if (_singletons.ContainsKey(keyType))
+                    if (_instances.ContainsKey(keyType))
                     {
-                        return _singletons[keyType];
+                        return _instances[keyType];
                     }
-                    _singletons.Add(keyType, CreateNewInstance(genericParameterType));
-                    return _singletons[keyType];
+                    _instances.Add(keyType, CreateNewInstance(genericParameterType));
+                    return _instances[keyType];
                 }
                 else
                 {
@@ -168,17 +168,19 @@ namespace BlueCheese.Core.ServiceLocator
                 }
             }
 
-            void IService.Shutdown()
+            internal void Shutdown()
             {
-                foreach (var instance in _singletons.Values)
+                foreach (var instance in _instances.Values)
                 {
                     if (instance is IDisposable disposable)
                     {
                         disposable.Dispose();
                     }
                 }
-                _singletons.Clear();
+                _instances.Clear();
             }
+
+            internal bool HasConcreteType(Type concreteType) => _concreteType == concreteType;
 
             private enum Scope
             {

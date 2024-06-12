@@ -16,7 +16,7 @@ namespace Tests.Services
         public void Setup()
         {
             _container.Reset();
-            CountableService.InstanceCount = 0;
+            CountableService.Count = 0;
         }
 
         [Test]
@@ -85,17 +85,17 @@ namespace Tests.Services
         {
             _container.Register<CountableService>().AsLazy();
 
-            Assert.That(CountableService.InstanceCount, Is.EqualTo(0));
+            Assert.That(CountableService.Count, Is.EqualTo(0));
 
             // Lazy services are not affected by startup
             _container.Startup();
 
-            Assert.That(CountableService.InstanceCount, Is.EqualTo(0));
+            Assert.That(CountableService.Count, Is.EqualTo(0));
 
             // Should instantiate the lazy service
             _container.Get<CountableService>();
 
-            Assert.That(CountableService.InstanceCount, Is.EqualTo(1));
+            Assert.That(CountableService.Count, Is.EqualTo(1));
         }
 
         [Test]
@@ -103,12 +103,12 @@ namespace Tests.Services
         {
             _container.Register<CountableService>().AsNonLazy();
 
-            Assert.That(CountableService.InstanceCount, Is.EqualTo(0));
+            Assert.That(CountableService.Count, Is.EqualTo(0));
 
             // Non lazy services are instantiated during startup
             _container.Startup();
 
-            Assert.That(CountableService.InstanceCount, Is.EqualTo(1));
+            Assert.That(CountableService.Count, Is.EqualTo(1));
         }
 
         [Test]
@@ -290,7 +290,7 @@ namespace Tests.Services
         public void Test_RegisterService_WithOptions()
         {
             _container.Register<OptionnableService>()
-                .UseOptions(() => new OptionnableService.Options { Foo = "Bar" });
+                .WithOptions(() => new OptionnableService.Options { Foo = "Bar" });
             var service = _container.Get<OptionnableService>();
 
             Assert.That(service.Print(), Is.EqualTo("Bar"));
@@ -309,13 +309,25 @@ namespace Tests.Services
         public void Test_RegisterService_AsTransient_WithOptions()
         {
             _container.Register<OptionnableService>()
-                .UseOptions(() => new OptionnableService.Options { Foo = "Bar" })
+                .WithOptions(() => new OptionnableService.Options { Foo = "Bar" })
                 .AsTransient();
             var service1 = _container.Get<OptionnableService>();
             var service2 = _container.Get<OptionnableService>();
 
             Assert.That(service1.Print(), Is.EqualTo("Bar"));
             Assert.That(service2.Print(), Is.EqualTo("Bar"));
+        }
+
+        [Test]
+        public void Test_RegisterService_WithMultipleInterfaces()
+        {
+            _container.Register<IFooService, CountableService>();
+            _container.Register<IBarService, CountableService>();
+            var fooService = _container.Get<IFooService>();
+            var barService = _container.Get<IBarService>();
+
+            Assert.That(CountableService.Count, Is.EqualTo(1));
+            Assert.That(fooService.Print(), Is.EqualTo(barService.Print()));
         }
     }
 
@@ -375,14 +387,19 @@ namespace Tests.Services
         public string Print() => $"{_fooService.Print()} {_barService.Print()}";
     }
 
-    public class CountableService
+    public class CountableService : IFooService, IBarService
     {
-        public static int InstanceCount = 0;
+        public static int Count = 0;
+
+        public int InstanceId { get; private set; }
 
         public CountableService()
         {
-            InstanceCount++;
+            Count++;
+            InstanceId = Count;
         }
+
+        public string Print() => $"CountableService #{InstanceId}";
     }
 
     public class InjectableObject
