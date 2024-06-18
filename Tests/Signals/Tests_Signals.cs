@@ -6,6 +6,7 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using Core.Signals;
+using System.Threading.Tasks;
 
 namespace Tests.Signals
 {
@@ -415,6 +416,45 @@ namespace Tests.Signals
             _channel.Unsubscribe(handle);
 
             _channel.Publish(new TestSignal());
+        }
+
+        [Test]
+        public async void Test_PublishAsync()
+        {
+            int value = 0;
+            _channel.Subscribe(async (TestSignal signal) =>
+            {
+                await Task.Yield();
+                value = 1;
+            });
+            _channel.Subscribe(async (TestSignal signal) =>
+            {
+                await Task.Yield();
+                value = 2;
+            });
+
+            await _channel.PublishAsync(new TestSignal());
+
+            Assert.That(value, Is.EqualTo(2));
+        }
+
+        [Test]
+        public async void Test_PublishAsync_WithNonAsyncSubscriber()
+        {
+            int value = 0;
+            _channel.Subscribe((TestSignal signal) =>
+            {
+                value = 1;
+            });
+            _channel.Subscribe(async (TestSignal signal) =>
+            {
+                await Task.Yield();
+                value = 2;
+            });
+
+            await _channel.PublishAsync(new TestSignal());
+
+            Assert.That(value, Is.EqualTo(2));
         }
 
         private class TestSignal

@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Core.Signals
 {
@@ -150,6 +151,30 @@ namespace Core.Signals
             {
                 Subscriber subscriber = subscribersCopy[i];
                 subscriber.Handler.DynamicInvoke(signal);
+                if (subscriber.IsOneShot)
+                {
+                    _subscribers[type].Remove(subscriber);
+                }
+            }
+        }
+
+        public async Task PublishAsync<T>(T signal = default)
+        {
+            Type type = typeof(T);
+            if (_subscribers.ContainsKey(type) == false)
+            {
+                // There is no subscriber for this signal
+                return;
+            }
+
+            // Make a copy of the subscriber list before publishing the signal
+            var subscribersCopy = _subscribers[type].ToArray();
+
+            // Publish the signal to all subscribers
+            for (int i = 0; i < subscribersCopy.Length; i++)
+            {
+                Subscriber subscriber = subscribersCopy[i];
+                await Task.Run(() => subscriber.Handler.DynamicInvoke(signal));
                 if (subscriber.IsOneShot)
                 {
                     _subscribers[type].Remove(subscriber);
