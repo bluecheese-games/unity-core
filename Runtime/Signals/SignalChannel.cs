@@ -158,6 +158,10 @@ namespace Core.Signals
             }
         }
 
+        /// <summary>
+        /// Publish a signal asynchronously.
+        /// </summary>
+        /// <param name="signal">The signal instance</param>
         public async Task PublishAsync<T>(T signal = default)
         {
             Type type = typeof(T);
