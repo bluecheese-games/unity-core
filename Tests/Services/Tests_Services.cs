@@ -329,6 +329,56 @@ namespace Tests.Services
             Assert.That(CountableService.Count, Is.EqualTo(1));
             Assert.That(fooService.Print(), Is.EqualTo(barService.Print()));
         }
+
+        [Test]
+        public void Test_RegisterService_WithInterfaceThenConcreteType()
+        {
+            _container.Register<IFooService, CountableService>();
+            _container.Register<CountableService>();
+            var fooService = _container.Get<IFooService>();
+            var countableService = _container.Get<CountableService>();
+
+            Assert.That(CountableService.Count, Is.EqualTo(1));
+            Assert.That(fooService.Print(), Is.EqualTo(countableService.Print()));
+        }
+
+        [Test]
+        public void Test_RegisterService_WithConcreteTypeThenInterface()
+        {
+            _container.Register<CountableService>();
+            _container.Register<IFooService, CountableService>();
+            var fooService = _container.Get<IFooService>();
+            var countableService = _container.Get<CountableService>();
+
+            Assert.That(CountableService.Count, Is.EqualTo(1));
+            Assert.That(fooService.Print(), Is.EqualTo(countableService.Print()));
+        }
+
+        [Test]
+        public void Test_RegisterService_WithInstanceThenInterface()
+        {
+            CountableService service = new();
+            _container.Register(service);
+            _container.Register<IFooService, CountableService>();
+            var fooService = _container.Get<IFooService>();
+            var countableService = _container.Get<CountableService>();
+
+            Assert.That(CountableService.Count, Is.EqualTo(1));
+            Assert.That(fooService.Print(), Is.EqualTo(countableService.Print()));
+        }
+
+        [Test]
+        public void Test_RegisterService_WithInterfaceThenInstance()
+        {
+            CountableService service = new();
+            _container.Register<IFooService, CountableService>();
+            _container.Register(service);
+            var fooService = _container.Get<IFooService>();
+            var countableService = _container.Get<CountableService>();
+
+            Assert.That(CountableService.Count, Is.EqualTo(1));
+            Assert.That(fooService.Print(), Is.EqualTo(countableService.Print()));
+        }
     }
 
     public interface IFooService
