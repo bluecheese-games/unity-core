@@ -87,7 +87,15 @@ namespace BlueCheese.Core.ServiceLocator
                 throw new Exception($"A service of type {abstractType} has already been registered");
             }
 
-            var service = new Service(this, instance);
+            var service = GetServiceWithConcreteType(instance.GetType());
+            if (service != null)
+            {
+                service.WithInstance(instance);
+            }
+            else
+            {
+                service = new Service(this, instance);
+            }
             _services[abstractType] = service;
             return service;
         }
