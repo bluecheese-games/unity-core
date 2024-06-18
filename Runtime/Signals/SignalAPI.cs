@@ -2,6 +2,7 @@
 // Copyright (c) 2024 BlueCheese Games All rights reserved
 //
 
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Core.Signals
@@ -79,5 +80,12 @@ namespace Core.Signals
         /// <param name="signal">The signal instance</param>
         public static void Publish<T>(T signal = default)
             => _defaultChannel.Publish(signal);
+
+        /// <summary>
+        /// Publish a signal asynchronously in the default channel.
+        /// </summary>
+        /// <param name="signal">The signal instance</param>
+        public static async Task PublishAsync<T>(T signal = default)
+            => await _defaultChannel.PublishAsync(signal);
     }
 }
