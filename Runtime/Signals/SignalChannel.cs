@@ -178,7 +178,7 @@ namespace Core.Signals
             for (int i = 0; i < subscribersCopy.Length; i++)
             {
                 Subscriber subscriber = subscribersCopy[i];
-                await Task.Run(() => subscriber.Handler.DynamicInvoke(signal));
+                await Task.Run(() => subscriber.Handler.DynamicInvoke(signal)).ConfigureAwait(false);
                 if (subscriber.IsOneShot)
                 {
                     _subscribers[type].Remove(subscriber);

@@ -424,11 +424,13 @@ namespace Tests.Signals
             int value = 0;
             _channel.Subscribe(async (TestSignal signal) =>
             {
+                Assert.That(value, Is.EqualTo(0));
                 await Task.Yield();
                 value = 1;
             });
             _channel.Subscribe(async (TestSignal signal) =>
             {
+                Assert.That(value, Is.EqualTo(1));
                 await Task.Yield();
                 value = 2;
             });
@@ -444,10 +446,12 @@ namespace Tests.Signals
             int value = 0;
             _channel.Subscribe((TestSignal signal) =>
             {
+                Assert.That(value, Is.EqualTo(0));
                 value = 1;
             });
             _channel.Subscribe(async (TestSignal signal) =>
             {
+                Assert.That(value, Is.EqualTo(1));
                 await Task.Yield();
                 value = 2;
             });
