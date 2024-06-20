@@ -10,18 +10,18 @@ namespace Core.Signals
 {
     public delegate void SignalHandler<T>(T signal);
 
-    public class SignalChannel
+    public partial class SignalChannel
     {
-        private readonly Dictionary<Type, List<Subscriber>> _subscribers = new Dictionary<Type, List<Subscriber>>();
+        private readonly Dictionary<Type, ISubscriberCollection> _subscriberCollections = new Dictionary<Type, ISubscriberCollection>();
 
         /// <summary>
         /// Unsubscribe all subscribers from all signals
         /// </summary>
         public void Reset()
         {
-            foreach (Type type in _subscribers.Keys)
+            foreach (var collection in _subscriberCollections.Values)
             {
-                UnsubscribeAll(type);
+                collection.RemoveAll();
             }
         }
 
@@ -42,25 +42,16 @@ namespace Core.Signals
         public void SubscribeOnce<T>(SignalHandler<T> handler, object handle = null)
             => Subscribe(handler, handle, true);
 
-        private void Subscribe<T>(SignalHandler<T> handler, object handle = null, bool once = false)
+        private void Subscribe<T>(SignalHandler<T> handler, object handle = null, bool oneshot = false)
         {
             if (handler == null)
             {
                 throw new ArgumentNullException(nameof(handler));
             }
 
-            Type type = typeof(T);
-            var subscriber = new Subscriber()
-            {
-                Handler = handler,
-                Handle = handle,
-                IsOneShot = once,
-            };
-
             SignalHandleObserver.TryAddObserver(handle);
 
-            EnsureSubscriberList(type);
-            _subscribers[type].Add(subscriber);
+            GetSubscriberCollection<T>().Add(handler, handle, oneshot);
         }
 
         /// <summary>
@@ -70,12 +61,12 @@ namespace Core.Signals
         public int Count<T>()
         {
             Type type = typeof(T);
-            if (_subscribers.ContainsKey(type) == false)
+            if (_subscriberCollections.ContainsKey(type) == false)
             {
                 // There is no subscriber for this signal
                 return 0;
             }
-            return _subscribers[type].Count;
+            return _subscriberCollections[type].Count();
         }
 
         /// <summary>
@@ -89,10 +80,7 @@ namespace Core.Signals
                 throw new ArgumentNullException(nameof(handler));
             }
 
-            Type type = typeof(T);
-            EnsureSubscriberList(type);
-
-            _subscribers[type].RemoveAll(s => s.Handler.Equals(handler));
+            GetSubscriberCollection<T>().RemoveAll(handler);
         }
 
         /// <summary>
@@ -106,10 +94,9 @@ namespace Core.Signals
                 throw new ArgumentNullException(nameof(handle));
             }
 
-            foreach (var type in _subscribers.Keys)
+            foreach (var collection in _subscriberCollections.Values)
             {
-                EnsureSubscriberList(type);
-                _subscribers[type].RemoveAll(s => s.Handle == handle);
+                collection.RemoveAll(handle);
             }
         }
 
@@ -117,18 +104,7 @@ namespace Core.Signals
         /// Unsubscribe all subscribers from a signal.
         /// </summary>
         public void UnsubscribeAll<T>()
-            => UnsubscribeAll(typeof(T));
-
-        private void UnsubscribeAll(Type type)
-        {
-            if (_subscribers.ContainsKey(type) == false)
-            {
-                // There is no subscriber for this signal
-                return;
-            }
-
-            _subscribers[type].Clear();
-        }
+            => GetSubscriberCollection<T>().RemoveAll();
 
         /// <summary>
         /// Publish a signal.
@@ -136,26 +112,7 @@ namespace Core.Signals
         /// <param name="signal">The signal instance</param>
         public void Publish<T>(T signal = default)
         {
-            Type type = typeof(T);
-            if (_subscribers.ContainsKey(type) == false)
-            {
-                // There is no subscriber for this signal
-                return;
-            }
-
-            // Make a copy of the subscriber list before publishing the signal
-            var subscribersCopy = _subscribers[type].ToArray();
-
-            // Publish the signal to all subscribers
-            for (int i = 0; i < subscribersCopy.Length; i++)
-            {
-                Subscriber subscriber = subscribersCopy[i];
-                subscriber.Handler.DynamicInvoke(signal);
-                if (subscriber.IsOneShot)
-                {
-                    _subscribers[type].Remove(subscriber);
-                }
-            }
+            GetSubscriberCollection<T>().Publish(signal);
         }
 
         /// <summary>
@@ -164,43 +121,17 @@ namespace Core.Signals
         /// <param name="signal">The signal instance</param>
         public async Task PublishAsync<T>(T signal = default)
         {
-            Type type = typeof(T);
-            if (_subscribers.ContainsKey(type) == false)
-            {
-                // There is no subscriber for this signal
-                return;
-            }
-
-            // Make a copy of the subscriber list before publishing the signal
-            var subscribersCopy = _subscribers[type].ToArray();
-
-            // Publish the signal to all subscribers
-            for (int i = 0; i < subscribersCopy.Length; i++)
-            {
-                Subscriber subscriber = subscribersCopy[i];
-                await Task.Run(() => subscriber.Handler.DynamicInvoke(signal)).ConfigureAwait(false);
-                if (subscriber.IsOneShot)
-                {
-                    _subscribers[type].Remove(subscriber);
-                }
-            }
+            await GetSubscriberCollection<T>().PublishAsync(signal);
         }
 
-        private void EnsureSubscriberList(Type type)
+        private ISubscriberCollection GetSubscriberCollection<T>()
         {
-            if (_subscribers.ContainsKey(type))
+            var type = typeof(T);
+            if (!_subscriberCollections.ContainsKey(type))
             {
-                return;
+                _subscriberCollections[type] = new SubscriberCollection<T>();
             }
-
-            _subscribers[type] = new List<Subscriber>();
-        }
-
-        private class Subscriber
-        {
-            public Delegate Handler;
-            public object Handle;
-            public bool IsOneShot;
+            return _subscriberCollections[type];
         }
     }
 }
