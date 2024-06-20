@@ -2,6 +2,7 @@
 // Copyright (c) 2024 BlueCheese Games All rights reserved
 //
 
+using System;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -35,7 +36,7 @@ namespace Core.Signals
         /// </summary>
         /// <param name="handler">The handler method</param>
         /// <param name="handle">The subscribing handle</param>
-        public static void Subscribe<T>(SignalHandler<T> handler, object handle = null)
+        public static void Subscribe<T>(Action<T> handler, object handle = null)
             => _defaultChannel.Subscribe(handler, handle);
 
         /// <summary>
@@ -44,7 +45,24 @@ namespace Core.Signals
         /// </summary>
         /// <param name="handler">The handler method</param>
         /// <param name="handle">The subscribing handle</param>
-        public static void SubscribeOnce<T>(SignalHandler<T> handler, object handle = null)
+        public static void SubscribeOnce<T>(Action<T> handler, object handle = null)
+            => _defaultChannel.SubscribeOnce(handler, handle);
+
+        /// <summary>
+        /// Subscribe to a signal in the default channel.
+        /// </summary>
+        /// <param name="handler">The async handler method</param>
+        /// <param name="handle">The subscribing handle</param>
+        public static void Subscribe<T>(Func<T, Task> handler, object handle = null)
+            => _defaultChannel.Subscribe(handler, handle);
+
+        /// <summary>
+        /// Subscribe to a signal in the default channel.
+        /// Unsubscribe automatically after the first signal received.
+        /// </summary>
+        /// <param name="handler">The async handler method</param>
+        /// <param name="handle">The subscribing handle</param>
+        public static void SubscribeOnce<T>(Func<T, Task> handler, object handle = null)
             => _defaultChannel.SubscribeOnce(handler, handle);
 
         /// <summary>
@@ -58,7 +76,7 @@ namespace Core.Signals
         /// Unsubscribe from a signal in the default channel.
         /// </summary>
         /// <param name="handler">The subscribed handler method</param>
-        public static void Unsubscribe<T>(SignalHandler<T> handler)
+        public static void Unsubscribe<T>(Action<T> handler)
             => _defaultChannel.Unsubscribe<T>(handler);
 
         /// <summary>

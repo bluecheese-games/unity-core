@@ -8,8 +8,6 @@ using System.Threading.Tasks;
 
 namespace Core.Signals
 {
-    public delegate void SignalHandler<T>(T signal);
-
     public partial class SignalChannel
     {
         private readonly Dictionary<Type, ISubscriberCollection> _subscriberCollections = new Dictionary<Type, ISubscriberCollection>();
@@ -30,7 +28,7 @@ namespace Core.Signals
         /// </summary>
         /// <param name="handler">The handler method</param>
         /// <param name="handle">The subscribing handle</param>
-        public void Subscribe<T>(SignalHandler<T> handler, object handle = null)
+        public void Subscribe<T>(Func<T, Task> handler, object handle = null)
             => Subscribe(handler, handle, false);
 
         /// <summary>
@@ -39,10 +37,39 @@ namespace Core.Signals
         /// </summary>
         /// <param name="handler">The handler method</param>
         /// <param name="handle">The subscribing handle</param>
-        public void SubscribeOnce<T>(SignalHandler<T> handler, object handle = null)
+        public void SubscribeOnce<T>(Func<T, Task> handler, object handle = null)
             => Subscribe(handler, handle, true);
 
-        private void Subscribe<T>(SignalHandler<T> handler, object handle = null, bool oneshot = false)
+        private void Subscribe<T>(Func<T, Task> handler, object handle = null, bool oneshot = false)
+        {
+            if (handler == null)
+            {
+                throw new ArgumentNullException(nameof(handler));
+            }
+
+            SignalHandleObserver.TryAddObserver(handle);
+
+            GetSubscriberCollection<T>().Add(handler, handle, oneshot);
+        }
+
+        /// <summary>
+        /// Subscribe to a signal.
+        /// </summary>
+        /// <param name="handler">The handler method</param>
+        /// <param name="handle">The subscribing handle</param>
+        public void Subscribe<T>(Action<T> handler, object handle = null)
+            => Subscribe(handler, handle, false);
+
+        /// <summary>
+        /// Subscribe to a signal.
+        /// Automatically unsubscribe after the first signal received.
+        /// </summary>
+        /// <param name="handler">The handler method</param>
+        /// <param name="handle">The subscribing handle</param>
+        public void SubscribeOnce<T>(Action<T> handler, object handle = null)
+            => Subscribe(handler, handle, true);
+
+        private void Subscribe<T>(Action<T> handler, object handle = null, bool oneshot = false)
         {
             if (handler == null)
             {
@@ -73,7 +100,7 @@ namespace Core.Signals
         /// Unsubscribe from a signal.
         /// </summary>
         /// <param name="handler">The subscribed handler method</param>
-        public void Unsubscribe<T>(SignalHandler<T> handler)
+        public void Unsubscribe<T>(Action<T> handler)
         {
             if (handler == null)
             {
