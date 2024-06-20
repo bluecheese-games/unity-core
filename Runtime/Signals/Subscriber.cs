@@ -40,7 +40,7 @@ namespace Core.Signals
             public async readonly Task InvokeAsync<T>(T signal)
             {
                 var handler = _handler;
-                await Task.Run(() => handler.DynamicInvoke(signal));
+                await Task.Run(() => handler.DynamicInvoke(signal)).ConfigureAwait(false);
             }
 
             public readonly bool HasHandle(object handle)
