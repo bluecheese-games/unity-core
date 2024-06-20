@@ -2,6 +2,7 @@
 // Copyright (c) 2024 BlueCheese Games All rights reserved
 //
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -11,21 +12,28 @@ namespace Core.Signals
     {
         public interface ISubscriberCollection
         {
-            void Add<T>(SignalHandler<T> handler, object handle, bool once);
+            void Add<T>(Action<T> handler, object handle, bool once);
+            void Add<T>(Func<T, Task> handler, object handle, bool oneShot);
             int Count();
             void Publish<T>(T signal);
             Task PublishAsync<T>(T signal);
             void Remove(ISubscriber subscriber);
             void RemoveAll();
             void RemoveAll(object handle);
-            void RemoveAll<T>(SignalHandler<T> handler);
+            void RemoveAll<T>(Action<T> handler);
         }
 
         private sealed class SubscriberCollection<TSignal> : ISubscriberCollection
         {
             private readonly List<ISubscriber> _subscribers = new();
 
-            public void Add<T>(SignalHandler<T> handler, object handle, bool oneShot)
+            public void Add<T>(Action<T> handler, object handle, bool oneShot)
+            {
+                var subscriber = new Subscriber<T>(handler, handle, oneShot);
+                _subscribers.Add(subscriber);
+            }
+
+            public void Add<T>(Func<T, Task> handler, object handle, bool oneShot)
             {
                 var subscriber = new Subscriber<T>(handler, handle, oneShot);
                 _subscribers.Add(subscriber);
@@ -71,7 +79,7 @@ namespace Core.Signals
 
             public void RemoveAll(object handle) => _subscribers.RemoveAll(s => s.HasHandle(handle));
 
-            public void RemoveAll<T>(SignalHandler<T> handler) => _subscribers.RemoveAll(s => s.HasHandler(handler));
+            public void RemoveAll<T>(Action<T> handler) => _subscribers.RemoveAll(s => s.HasHandler(handler));
         }
     }
 }

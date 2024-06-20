@@ -2,6 +2,8 @@
 // Copyright (c) 2024 BlueCheese Games All rights reserved
 //
 
+using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Core.Signals
@@ -12,43 +14,57 @@ namespace Core.Signals
         public interface ISubscriber
         {
             bool HasHandle(object handle);
-            bool HasHandler<T>(SignalHandler<T> handler);
+            bool HasHandler<T>(Action<T> handler);
             void Invoke<T>(T signal);
             Task InvokeAsync<T>(T signal);
         }
 
-        public readonly struct Subscriber<TSignal> : ISubscriber
+        public class Subscriber<TSignal> : ISubscriber
         {
-            private readonly SignalHandler<TSignal> _handler;
+            private readonly Func<TSignal, Task> _asyncHandler;
+            private readonly Action<TSignal> _handler;
             private readonly object _handle;
             private readonly bool _isOneShot;
 
-            public readonly bool IsOneShot => _isOneShot;
+            public bool IsOneShot => _isOneShot;
 
-            public Subscriber(SignalHandler<TSignal> handler, object handle, bool isOneShot)
+            public Subscriber(Action<TSignal> handler, object handle, bool isOneShot)
             {
                 _handler = handler;
                 _handle = handle;
                 _isOneShot = isOneShot;
             }
 
-            public readonly void Invoke<T>(T signal)
+            public Subscriber(Func<TSignal, Task> handler, object handle, bool isOneShot)
+            {
+                _asyncHandler = handler;
+                _handle = handle;
+                _isOneShot = isOneShot;
+            }
+
+            public void Invoke<T>(T signal)
             {
                 _handler.DynamicInvoke(signal);
             }
 
-            public async readonly Task InvokeAsync<T>(T signal)
+            public async Task InvokeAsync<T>(T signal)
             {
-                var handler = _handler;
-                await Task.Run(() => handler.DynamicInvoke(signal)).ConfigureAwait(false);
+                if (_asyncHandler != null)
+                {
+                    await _asyncHandler.Invoke((TSignal)Convert.ChangeType(signal, typeof(TSignal)));
+                }
+                else
+                {
+                    _handler.DynamicInvoke(signal);
+                }
             }
 
-            public readonly bool HasHandle(object handle)
+            public bool HasHandle(object handle)
             {
                 return handle == _handle;
             }
 
-            public readonly bool HasHandler<T>(SignalHandler<T> handler)
+            public bool HasHandler<T>(Action<T> handler)
             {
                 return handler.Method.Equals(_handler.Method);
             }

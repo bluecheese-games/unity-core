@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using Core.Signals;
 using System.Threading.Tasks;
+using UnityEngine;
 
 namespace Tests.Signals
 {
@@ -136,7 +137,7 @@ namespace Tests.Signals
         public void Test_Unsubscribe()
         {
             int value = -1;
-            SignalHandler<TestSignal> handler = (TestSignal signal) =>
+            Action<TestSignal> handler = (TestSignal signal) =>
             {
                 value = signal.Value;
             };
@@ -150,17 +151,17 @@ namespace Tests.Signals
         public void Test_Unsubscribe_SomeHandlers()
         {
             List<int> handlerCallOrder = new List<int>();
-            SignalHandler<TestSignal> handler1 = (TestSignal signal) =>
+            Action<TestSignal> handler1 = (TestSignal signal) =>
             {
                 handlerCallOrder.Add(1);
             };
             _channel.Subscribe(handler1);
-            SignalHandler<TestSignal> handler2 = (TestSignal signal) =>
+            Action<TestSignal> handler2 = (TestSignal signal) =>
             {
                 handlerCallOrder.Add(2);
             };
             _channel.Subscribe(handler2);
-            SignalHandler<TestSignal> handler3 = (TestSignal signal) =>
+            Action<TestSignal> handler3 = (TestSignal signal) =>
             {
                 handlerCallOrder.Add(3);
             };
@@ -193,7 +194,7 @@ namespace Tests.Signals
         [Test]
         public void Test_Unsubscribe_NotSubscribedHandler()
         {
-            SignalHandler<TestSignal> handler = (TestSignal signal) => { };
+            Action<TestSignal> handler = (TestSignal signal) => { };
             _channel.Unsubscribe(handler);
 
             Assert.Pass();
@@ -263,8 +264,8 @@ namespace Tests.Signals
         [Test]
         public void Test_Subscribe_WhileReceivingSignal()
         {
-            SignalHandler<TestSignal> handler = null;
-            SignalHandler<TestSignal> handler2 = null;
+            Action<TestSignal> handler = null;
+            Action<TestSignal> handler2 = null;
             handler = (TestSignal signal) =>
             {
                 _channel.Subscribe(handler2);
@@ -284,8 +285,8 @@ namespace Tests.Signals
         [Test]
         public void Test_Reset_WhileReceivingSignal()
         {
-            SignalHandler<TestSignal> handler = null;
-            SignalHandler<TestSignal> handler2 = null;
+            Action<TestSignal> handler = null;
+            Action<TestSignal> handler2 = null;
             handler = (TestSignal signal) =>
             {
                 Assert.That(_channel.Count<TestSignal>(), Is.EqualTo(1));
@@ -307,8 +308,8 @@ namespace Tests.Signals
         public void Test_SubscribeOnce_WhileReceivingSignal()
         {
             int value = 0;
-            SignalHandler<TestSignal> handler = null;
-            SignalHandler<TestSignal> handler2 = null;
+            Action<TestSignal> handler = null;
+            Action<TestSignal> handler2 = null;
             handler = (TestSignal signal) =>
             {
                 value = signal.Value;
@@ -336,8 +337,8 @@ namespace Tests.Signals
         public void Test_Unsubscribe_WhileReceivingSignal()
         {
             int value = 0;
-            SignalHandler<TestSignal> handler = null;
-            SignalHandler<TestSignal> handler2 = null;
+            Action<TestSignal> handler = null;
+            Action<TestSignal> handler2 = null;
             handler = (TestSignal signal) =>
             {
                 _channel.Unsubscribe(handler2);
@@ -359,8 +360,8 @@ namespace Tests.Signals
         [Test]
         public void Test_Subscribe_And_Unsubscribe_WhileReceivingSignal()
         {
-            SignalHandler<TestSignal> handler = null;
-            SignalHandler<TestSignal> handler2 = null;
+            Action<TestSignal> handler = null;
+            Action<TestSignal> handler2 = null;
             handler = (TestSignal signal) =>
             {
                 _channel.Subscribe(handler2);
@@ -381,8 +382,8 @@ namespace Tests.Signals
         [Test]
         public void Test_Subscribe_And_UnsubscribeAll_WhileReceivingSignal()
         {
-            SignalHandler<TestSignal> handler = null;
-            SignalHandler<TestSignal> handler2 = null;
+            Action<TestSignal> handler = null;
+            Action<TestSignal> handler2 = null;
             handler = (TestSignal signal) =>
             {
                 _channel.Subscribe(handler2);
@@ -416,6 +417,24 @@ namespace Tests.Signals
             _channel.Unsubscribe(handle);
 
             _channel.Publish(new TestSignal());
+        }
+
+        [Test]
+        public async void Test_PublishAsync_OnMainThread()
+        {
+            GameObject obj = null;
+            bool complete = false;
+            _channel.Subscribe((TestSignal signal) =>
+            {
+                obj = new GameObject();
+                complete = true;
+                return Task.CompletedTask;
+            });
+
+            await _channel.PublishAsync(new TestSignal());
+
+            Assert.That(complete, Is.True);
+            Assert.That(obj, Is.Not.Null);
         }
 
         [Test]
