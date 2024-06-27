@@ -9,9 +9,9 @@ using Core.Signals;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace Tests.Signals
+namespace BlueCheese.Tests.Signals
 {
-    public class Tests
+    public class Tests_SignalChannel
     {
         private SignalChannel _channel;
 

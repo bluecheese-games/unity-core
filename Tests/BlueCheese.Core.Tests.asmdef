@@ -1,6 +1,6 @@
 {
-    "name": "Tests",
-    "rootNamespace": "",
+    "name": "BlueCheese.Core.Tests",
+    "rootNamespace": "BlueCheese.Tests",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",

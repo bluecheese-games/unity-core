@@ -6,6 +6,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Reflection;
+using UnityEngine;
 
 namespace BlueCheese.Core.ServiceLocator
 {
@@ -216,17 +217,32 @@ namespace BlueCheese.Core.ServiceLocator
         /// </summary>
         /// <typeparam name="TService"></typeparam>
         /// <param name="instance">The instance that contains the injectable fields</param>
+        /// <param name="includeBaseClasses">Should we inject base classes as well</param>
         /// <returns>The instance</returns>
-        public TService Inject<TService>(TService instance)
+        public TService Inject<TService>(TService instance, bool includeBaseClasses = false)
         {
             Type type = typeof(TService);
-            var fields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic
-                | BindingFlags.DeclaredOnly | BindingFlags.Instance);
-            foreach (var field in fields)
+            while (type != null && type != typeof(MonoBehaviour))
             {
-                if (field.GetCustomAttribute<InjectableAttribute>(false) == null) { continue; }
+                var fields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic
+                    | BindingFlags.DeclaredOnly | BindingFlags.Instance);
 
-                field.SetValue(instance, ResolveService(field.FieldType));
+                foreach (var field in fields)
+                {
+                    if (field.GetCustomAttribute<InjectableAttribute>(true) == null)
+                    {
+                        continue;
+                    }
+
+                    field.SetValue(instance, ResolveService(field.FieldType));
+                }
+
+                if (!includeBaseClasses)
+                {
+                    break;
+                }
+
+                type = type.BaseType;
             }
             return instance;
         }
