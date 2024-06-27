@@ -2,13 +2,13 @@
 // Copyright (c) 2024 BlueCheese Games All rights reserved
 //
 
+using BlueCheese.Core.ServiceLocator;
 using NUnit.Framework;
 using System;
-using BlueCheese.Core.ServiceLocator;
 
-namespace Tests.Services
+namespace BlueCheese.Tests.ServiceLocator
 {
-    public class Tests
+    public class Tests_ServiceContainer
     {
         readonly ServiceContainer _container = new();
 
@@ -276,7 +276,7 @@ namespace Tests.Services
             _container.Register<IFooService, FooService>();
             _container.Register<IBarService, BarService>();
 
-            InjectableObject testedObject = new InjectableObject();
+            var testedObject = new InjectableObject();
             Assert.That(testedObject.Foo, Is.Null);
             Assert.That(testedObject.Bar, Is.Null);
 
@@ -284,6 +284,46 @@ namespace Tests.Services
 
             Assert.That(testedObject.Foo, Is.Not.Null);
             Assert.That(testedObject.Bar, Is.Not.Null);
+        }
+
+        [Test]
+        public void Test_InjectServices_InChildClassOnly()
+        {
+            _container.Register<IChildService, ChildService>();
+            _container.Register<IBaseService, BaseService>();
+            var child = new InjectableChildObject();
+
+            _container.Inject(child);
+
+            Assert.That(child.ChildService, Is.Not.Null);
+            Assert.That(child.BaseService, Is.Null);
+        }
+
+        [Test]
+        public void Test_InjectServices_InChildClassAndBaseClass()
+        {
+            _container.Register<IChildService, ChildService>();
+            _container.Register<IBaseService, BaseService>();
+            var child = new InjectableChildObject();
+
+            _container.Inject(child, true);
+
+            Assert.That(child.ChildService, Is.Not.Null);
+            Assert.That(child.BaseService, Is.Not.Null);
+        }
+
+        [Test]
+        public void Test_InjectServices_InBaseClass()
+        {
+            _container.Register<IChildService, ChildService>();
+            _container.Register<IBaseService, BaseService>();
+            var child = new InjectableChildObject();
+            var parent = (InjectableBaseObject)child;
+
+            _container.Inject(parent);
+
+            Assert.That(child.ChildService, Is.Null);
+            Assert.That(child.BaseService, Is.Not.Null);
         }
 
         [Test]
@@ -379,102 +419,124 @@ namespace Tests.Services
             Assert.That(CountableService.Count, Is.EqualTo(1));
             Assert.That(fooService.Print(), Is.EqualTo(countableService.Print()));
         }
-    }
 
-    public interface IFooService
-    {
-        string Print();
-    }
-
-    public interface IBarService
-    {
-        string Print();
-    }
-
-    public interface IGenericService<T>
-    {
-        string Print();
-    }
-
-    public class FooService : IFooService
-    {
-        public string Print() => "foo";
-    }
-
-    public class DecoratorFooService : IFooService
-    {
-        public IFooService _decoratedFooService;
-
-        public DecoratorFooService(IFooService decoratedFooService)
+        public interface IFooService
         {
-            _decoratedFooService = decoratedFooService;
+            string Print();
         }
 
-        public string Print() => "decorated " + _decoratedFooService.Print();
-    }
-
-    public class BarService : IBarService
-    {
-        public string Print() => "bar";
-    }
-
-    public class GenericService<T> : IGenericService<T>
-    {
-        public string Print() => "generic " + typeof(T);
-    }
-
-    public class FooBarService
-    {
-        private readonly FooService _fooService;
-        private readonly IBarService _barService;
-
-        public FooBarService(FooService fooService, IBarService barService)
+        public interface IBarService
         {
-            _fooService = fooService;
-            _barService = barService;
+            string Print();
         }
 
-        public string Print() => $"{_fooService.Print()} {_barService.Print()}";
-    }
+        public interface IChildService { }
 
-    public class CountableService : IFooService, IBarService
-    {
-        public static int Count = 0;
+        public class ChildService : IChildService { }
 
-        public int InstanceId { get; private set; }
+        public interface IBaseService { }
 
-        public CountableService()
+        public class BaseService : IBaseService { }
+
+        public interface IGenericService<T>
         {
-            Count++;
-            InstanceId = Count;
+            string Print();
         }
 
-        public string Print() => $"CountableService #{InstanceId}";
-    }
-
-    public class InjectableObject
-    {
-        [Injectable] private readonly IFooService _fooService;
-        [Injectable] private readonly IBarService _barService;
-
-        public IFooService Foo => _fooService;
-        public IBarService Bar => _barService;
-    }
-
-    public class OptionnableService
-    {
-        public struct Options : IOptions
+        public class FooService : IFooService
         {
-            public string Foo;
+            public string Print() => "foo";
         }
 
-        private readonly Options _options;
-
-        public OptionnableService(Options options)
+        public class DecoratorFooService : IFooService
         {
-            _options = options;
+            public IFooService _decoratedFooService;
+
+            public DecoratorFooService(IFooService decoratedFooService)
+            {
+                _decoratedFooService = decoratedFooService;
+            }
+
+            public string Print() => "decorated " + _decoratedFooService.Print();
         }
 
-        public string Print() => _options.Foo;
+        public class BarService : IBarService
+        {
+            public string Print() => "bar";
+        }
+
+        public class GenericService<T> : IGenericService<T>
+        {
+            public string Print() => "generic " + typeof(T);
+        }
+
+        public class FooBarService
+        {
+            private readonly FooService _fooService;
+            private readonly IBarService _barService;
+
+            public FooBarService(FooService fooService, IBarService barService)
+            {
+                _fooService = fooService;
+                _barService = barService;
+            }
+
+            public string Print() => $"{_fooService.Print()} {_barService.Print()}";
+        }
+
+        public class CountableService : IFooService, IBarService
+        {
+            public static int Count = 0;
+
+            public int InstanceId { get; private set; }
+
+            public CountableService()
+            {
+                Count++;
+                InstanceId = Count;
+            }
+
+            public string Print() => $"CountableService #{InstanceId}";
+        }
+
+        public class InjectableObject
+        {
+            [Injectable] private readonly IFooService _fooService;
+            [Injectable] private readonly IBarService _barService;
+
+            public IFooService Foo => _fooService;
+            public IBarService Bar => _barService;
+        }
+
+        public class InjectableBaseObject
+        {
+            [Injectable] protected readonly IBaseService _baseService;
+
+            public IBaseService BaseService => _baseService;
+        }
+
+        public class InjectableChildObject : InjectableBaseObject
+        {
+            [Injectable] private readonly IChildService _childService;
+
+            public IChildService ChildService => _childService;
+        }
+
+        public class OptionnableService
+        {
+            public struct Options : IOptions
+            {
+                public string Foo;
+            }
+
+            private readonly Options _options;
+
+            public OptionnableService(Options options)
+            {
+                _options = options;
+            }
+
+            public string Print() => _options.Foo;
+        }
     }
 }
