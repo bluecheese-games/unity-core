@@ -165,7 +165,7 @@ namespace BlueCheese.Core.ServiceLocator
 
         private object ResolveService(Type abstractType, Type constructedService = null, Service service = null)
         {
-            if (typeof(IOptions).IsAssignableFrom(abstractType))
+            if (typeof(IOptions).IsAssignableFrom(abstractType) && service != null)
             {
                 return service.Options ?? Activator.CreateInstance(abstractType);
             }
@@ -196,6 +196,19 @@ namespace BlueCheese.Core.ServiceLocator
                 throw new Exception($"Service not found: {keyType}");
             }
             return services[keyType].GetInstance(genericParameterType);
+        }
+
+        /// <summary>
+        /// Instantiate and inject an object of the specified type
+        /// </summary>
+        public T Instantiate<T>() => (T)Instantiate(typeof(T));
+
+        /// <summary>
+        /// Instantiate and inject an object of the specified type
+        /// </summary>
+        public object Instantiate(Type type)
+        {
+            return Activator.CreateInstance(type, ResolveParameters(type, null));
         }
 
         private object[] ResolveParameters(Type concreteType, Service service)
