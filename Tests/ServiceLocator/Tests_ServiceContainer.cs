@@ -418,9 +418,19 @@ namespace BlueCheese.Tests.ServiceLocator
 
             Assert.That(CountableService.Count, Is.EqualTo(1));
             Assert.That(fooService.Print(), Is.EqualTo(countableService.Print()));
-        }
+		}
 
-        public interface IFooService
+		[Test]
+		public void Test_Instantiate()
+		{
+			_container.Register<FooService>();
+			_container.Register<IBarService, BarService>();
+
+			var service = _container.Instantiate<FooBarService>();
+			Assert.That(service.Print(), Is.EqualTo("foo bar"));
+		}
+
+		public interface IFooService
         {
             string Print();
         }
