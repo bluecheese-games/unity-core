@@ -45,7 +45,7 @@ namespace BlueCheese.Core.ServiceLocator
 			=> ServiceContainer.Default.RegisterDecorator<TService, TDecorator>();
 
 		/// <summary>
-		/// Call it when all services has been registered.
+		/// Call it when all services have been registered.
 		/// Singleton services marked as non-lazy will be instantiated immediately.
 		/// </summary>
 		public static void Startup() 
