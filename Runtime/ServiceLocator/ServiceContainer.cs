@@ -124,7 +124,7 @@ namespace BlueCheese.Core.ServiceLocator
         }
 
         /// <summary>
-        /// Call it when all services has been registered.
+        /// Call it when all services have been registered.
         /// Singleton services marked as non-lazy will be instantiated immediatly.
         /// </summary>
         public void Startup()
