@@ -12,7 +12,7 @@ namespace BlueCheese.Core.FSM
         IState CurrentState { get; }
         IState DefaultState { get; }
         bool IsStarted { get; }
-        IReadOnlyList<IState> States { get; }
+		IEnumerable<IState> States { get; }
         float StateTime { get; }
 
         bool GetBoolValue(string name);
