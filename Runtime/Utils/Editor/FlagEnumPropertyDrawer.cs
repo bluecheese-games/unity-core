@@ -2,7 +2,7 @@ using System;
 using UnityEditor;
 using UnityEngine;
 
-namespace BlueCheese.Core
+namespace BlueCheese.Core.Editor
 {
 	[CustomPropertyDrawer(typeof(FlagEnum<>))]
 	public class FlagEnumPropertyDrawer : PropertyDrawer
