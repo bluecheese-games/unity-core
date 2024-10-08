@@ -9,41 +9,32 @@ namespace BlueCheese.Tests.FSM
 {
     public class Tests_Conditions
     {
-        private StateMachine stateMachine;
-
-        [TearDown]
-        public void TearDown() => stateMachine?.Dispose();
-
         [Test]
         public void Test_Condition_Evaluate_Trigger()
         {
             // Arrange
-            stateMachine = new StateMachine.Builder()
-                .AddState(new MockState("A"), true)
-                .Build();
+            var blackboard = new Blackboard();
             ICondition condition = Condition.CreateTriggerCondition("test");
 
-            // Act
-            stateMachine.SetTrigger("test");
+			// Act
+			blackboard.SetTrigger("test");
 
             // Assert
-            Assert.That(condition.Evaluate(stateMachine), Is.True);
+            Assert.That(condition.Evaluate(blackboard), Is.True);
         }
 
         [Test]
         public void Test_Condition_Evaluate_Bool()
         {
             // Arrange
-            stateMachine = new StateMachine.Builder()
-                .AddState(new MockState("A"), true)
-                .Build();
+            var blackboard = new Blackboard();
             ICondition condition = Condition.CreateBoolCondition("test", true);
 
             // Act
-            stateMachine.SetBool("test", true);
+            blackboard.SetBool("test", true);
 
             // Assert
-            Assert.That(condition.Evaluate(stateMachine), Is.True);
+            Assert.That(condition.Evaluate(blackboard), Is.True);
         }
 
         [Test]
@@ -56,16 +47,14 @@ namespace BlueCheese.Tests.FSM
         public bool Test_Condition_Evaluate_Int(Condition.Operator op, int targetValue)
         {
             // Arrange
-            stateMachine = new StateMachine.Builder()
-                .AddState(new MockState("A"), true)
-                .Build();
+            var blackboard = new Blackboard();
             ICondition condition = Condition.CreateIntCondition("test", op, targetValue);
 
-            // Act
-            stateMachine.SetInt("test", 1);
+			// Act
+			blackboard.SetInt("test", 1);
 
             // Assert
-            return condition.Evaluate(stateMachine);
+            return condition.Evaluate(blackboard);
         }
 
         [Test]
@@ -77,47 +66,41 @@ namespace BlueCheese.Tests.FSM
         [TestCase(Condition.Operator.LessOrEqual, 1f, ExpectedResult = true)]
         public bool Test_Condition_Evaluate_Float(Condition.Operator op, float targetValue)
         {
-            // Arrange
-            stateMachine = new StateMachine.Builder()
-                .AddState(new MockState("A"), true)
-                .Build();
-            ICondition condition = Condition.CreateFloatCondition("test", op, targetValue);
+			// Arrange
+			var blackboard = new Blackboard();
+			ICondition condition = Condition.CreateFloatCondition("test", op, targetValue);
 
             // Act
-            stateMachine.SetFloat("test", 1f);
+            blackboard.SetFloat("test", 1f);
 
             // Assert
-            return condition.Evaluate(stateMachine);
+            return condition.Evaluate(blackboard);
         }
 
         [Test]
         public void Test_Condition_Evaluate_NotExistingTrigger()
         {
-            // Arrange
-            stateMachine = new StateMachine.Builder()
-                .AddState(new MockState("A"), true)
-                .Build();
-            ICondition condition = Condition.CreateTriggerCondition("test");
+			// Arrange
+			var blackboard = new Blackboard();
+			ICondition condition = Condition.CreateTriggerCondition("test");
 
-            // Act
-            stateMachine.SetTrigger("test2");
+			// Act
+			blackboard.SetTrigger("test2");
 
             // Assert
-            Assert.That(condition.Evaluate(stateMachine), Is.False);
+            Assert.That(condition.Evaluate(blackboard), Is.False);
         }
 
         [Test]
         // test predicate condition
         public void Test_Condition_Evaluate_Predicate()
         {
-            // Arrange / Act
-            stateMachine = new StateMachine.Builder()
-                .AddState(new MockState("A"), true)
-                .Build();
-            ICondition condition = Condition.CreatePredicateCondition(() => true);
+			// Arrange / Act
+			var blackboard = new Blackboard();
+			ICondition condition = Condition.CreatePredicateCondition(() => true);
 
             // Assert
-            Assert.That(condition.Evaluate(stateMachine), Is.True);
+            Assert.That(condition.Evaluate(blackboard), Is.True);
         }
     }
 }

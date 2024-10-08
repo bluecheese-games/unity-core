@@ -11,18 +11,18 @@ namespace BlueCheese.Core.FSM
 
         public IState NextState { get; private set; }
 
-        public Transition(IState nextState, float exitTime, ICondition[] conditions)
+        public Transition(IState nextState, float exitTime, params ICondition[] conditions)
         {
             NextState = nextState;
             _exitTime = exitTime;
             _conditions = conditions;
         }
 
-        public bool Evaluate(IStateMachine stateMachine, out IState nextstate, out float overTime)
+        public bool Evaluate(float stateTime, IBlackboard blackboard, out IState nextstate, out float overTime)
         {
             overTime = 0f;
             nextstate = null;
-            if (_exitTime > 0f && stateMachine.StateTime < _exitTime)
+            if (_exitTime > 0f && stateTime < _exitTime)
             {
                 return false;
             }
@@ -31,14 +31,14 @@ namespace BlueCheese.Core.FSM
             {
                 foreach (var condition in _conditions)
                 {
-                    if (!condition.Evaluate(stateMachine))
+                    if (!condition.Evaluate(blackboard))
                     {
                         return false;
                     }
                 }
             }
 
-            overTime = stateMachine.StateTime - _exitTime;
+            overTime = stateTime - _exitTime;
             nextstate = NextState;
             return true;
         }

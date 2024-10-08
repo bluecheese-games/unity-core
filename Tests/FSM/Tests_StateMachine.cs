@@ -357,7 +357,7 @@ namespace BlueCheese.Tests.FSM
                 .AddTransitionFromAnyState(stateB.Name, Condition.CreateTriggerCondition("trigger"))
                 .Build();
             stateMachine.Start();
-            stateMachine.SetTrigger("trigger");
+            stateMachine.Blackboard.SetTrigger("trigger");
 
             // Act
             stateMachine.Update(0f);

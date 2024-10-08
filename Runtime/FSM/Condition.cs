@@ -55,12 +55,12 @@ namespace BlueCheese.Core.FSM
         static public ICondition CreatePredicateCondition(Func<bool> predicate)
             => new Condition() { _type = Type.Predicate, _predicate = predicate };
 
-        public bool Evaluate(IStateMachine stateMachine) => _type switch
+        public bool Evaluate(IBlackboard blackboard) => _type switch
         {
-            Type.Trigger => stateMachine.GetTriggerState(_parameterName),
-            Type.Bool => stateMachine.GetBoolValue(_parameterName) == _boolValue,
-            Type.Int => EvaluateInt(stateMachine.GetIntValue(_parameterName), _intValue, _operator),
-            Type.Float => EvaluateFloat(stateMachine.GetFloatValue(_parameterName), _floatValue, _operator),
+            Type.Trigger => blackboard.GetTriggerState(_parameterName),
+            Type.Bool => blackboard.GetBoolValue(_parameterName) == _boolValue,
+            Type.Int => EvaluateInt(blackboard.GetIntValue(_parameterName), _intValue, _operator),
+            Type.Float => EvaluateFloat(blackboard.GetFloatValue(_parameterName), _floatValue, _operator),
             Type.Predicate => _predicate(),
             _ => false,
         };

@@ -6,6 +6,6 @@ namespace BlueCheese.Core.FSM
 {
     public interface ICondition
     {
-        bool Evaluate(IStateMachine stateMachine);
+        bool Evaluate(IBlackboard blackboard);
     }
 }
