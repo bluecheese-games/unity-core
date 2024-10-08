@@ -271,6 +271,73 @@ namespace BlueCheese.Tests.ServiceLocator
         }
 
         [Test]
+        public void Test_RegisterSubContainer()
+        {
+            // Arrange
+            ServiceContainer subContainer = new();
+            subContainer.Register<FooService>();
+
+            // Act
+            _container.RegisterSubContainer(subContainer);
+
+            // Assert
+            Assert.That(_container.Get<FooService>(), Is.Not.Null);
+        }
+
+        [Test]
+        public void Test_RegisterSubContainer_WithSameService()
+		{
+			// Arrange
+			var service1 = new CountableService();
+			var service2 = new CountableService();
+
+			_container.Register(service1);
+			ServiceContainer subContainer = new();
+			subContainer.Register(service2);
+
+			// Act
+			_container.RegisterSubContainer(subContainer);
+
+			// Assert
+			var service = _container.Get<CountableService>();
+			Assert.That(service, Is.Not.Null);
+			Assert.That(service, Is.SameAs(service1));
+		}
+
+        [Test]
+        public void Test_RegisterSubContainer_Null()
+        {
+            Assert.Throws(typeof(ArgumentNullException), () =>
+            {
+                _container.RegisterSubContainer(null);
+            });
+        }
+
+        [Test]
+        public void Test_RegisterSubContainer_WithItself()
+		{
+			Assert.Throws(typeof(ArgumentException), () =>
+			{
+				_container.RegisterSubContainer(_container);
+			});
+		}
+
+		[Test]
+		public void Test_RegisterSubContainer_Twice()
+		{
+			// Arrange
+			ServiceContainer subContainer = new();
+			subContainer.Register<FooService>();
+			_container.RegisterSubContainer(subContainer);
+
+			// Act / Assert
+			Assert.Throws(typeof(ArgumentException), () =>
+			{
+				_container.RegisterSubContainer(subContainer);
+			});
+		}
+
+		[Test]
         public void Test_InjectServices()
         {
             _container.Register<IFooService, FooService>();
@@ -293,7 +360,7 @@ namespace BlueCheese.Tests.ServiceLocator
             _container.Register<IBaseService, BaseService>();
             var child = new InjectableChildObject();
 
-            _container.Inject(child);
+            _container.Inject(child, false);
 
             Assert.That(child.ChildService, Is.Not.Null);
             Assert.That(child.BaseService, Is.Null);
