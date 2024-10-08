@@ -9,111 +9,78 @@ namespace BlueCheese.Tests.FSM
 {
     public class Tests_Transitions
     {
-        private StateMachine stateMachine;
+		[Test]
+		public void Test_Transition_Evaluate_ExitTime()
+		{
+			// Arrange
+			var state = new MockState("A");
+			var blackboard = new Blackboard();
+			ITransition transition = new Transition(state, 1f);
 
-        [TearDown]
-        public void TearDown() => stateMachine?.Dispose();
+			// Act / Assert
+			Assert.That(transition.Evaluate(0.5f, blackboard, out _, out _), Is.False);
+			Assert.That(transition.Evaluate(1f, blackboard, out _, out _), Is.True);
+			Assert.That(transition.Evaluate(2f, blackboard, out _, out _), Is.True);
+		}
 
-        [Test]
+		[Test]
         public void Test_Transition_Evaluate_Trigger()
         {
             // Arrange
-            var stateA = new MockState("A");
-            var stateB = new MockState("B");
-            stateMachine = new StateMachine.Builder()
-                .AddState(stateA, true)
-                .AddState(stateB)
-                .AddTransition(stateA.Name, stateB.Name, out var transition, 0, Condition.CreateTriggerCondition("test"))
-                .Build();
-            stateMachine.Start();
+            var state = new MockState("A");
+            var blackboard = new Blackboard();
+            ITransition transition = new Transition(state, 0f, Condition.CreateTriggerCondition("test"));
 
-            // Act
-            stateMachine.SetTrigger("test");
+			// Act
+			blackboard.SetTrigger("test");
 
             // Assert
-            Assert.That(transition.Evaluate(stateMachine, out _, out _), Is.True);
-        }
-
-        [Test]
-        public void Test_Transition_Evaluate_Trigger_WithExitTime()
-        {
-            // Arrange
-            var stateA = new MockState("A");
-            var stateB = new MockState("B");
-            stateMachine = new StateMachine.Builder()
-                .AddState(stateA, true)
-                .AddState(stateB)
-                .AddTransition(stateA.Name, stateB.Name, out var transition, 1, Condition.CreateTriggerCondition("test"))
-                .Build();
-            stateMachine.Start();
-
-            // Act
-            stateMachine.SetTrigger("test");
-            stateMachine.Update(0.5f);
-            stateMachine.Update(1f);
-
-            // Assert
-            Assert.That(stateMachine.CurrentState.Name, Is.EqualTo("B"));
+            Assert.That(transition.Evaluate(0f, blackboard, out _, out _), Is.True);
         }
 
         [Test]
         public void Test_Transition_Evaluate_Bool()
         {
             // Arrange
-            var stateA = new MockState("A");
-            var stateB = new MockState("B");
-            stateMachine = new StateMachine.Builder()
-                .AddState(stateA, true)
-                .AddState(stateB)
-                .AddTransition(stateA.Name, stateB.Name, out var transition, 0, Condition.CreateBoolCondition("test", true))
-                .Build();
-            stateMachine.Start();
+            var state = new MockState("A");
+            var blackboard = new Blackboard();
+            ITransition transition = new Transition(state, 0f, Condition.CreateBoolCondition("test", true));
 
-            // Act
-            stateMachine.SetBool("test", true);
+			// Act
+			blackboard.SetBool("test", true);
 
             // Assert
-            Assert.That(transition.Evaluate(stateMachine, out _, out _), Is.True);
+            Assert.That(transition.Evaluate(0f, blackboard, out _, out _), Is.True);
         }
 
         [Test]
         public void Test_Transition_Evaluate_Int()
         {
             // Arrange
-            var stateA = new MockState("A");
-            var stateB = new MockState("B");
-            stateMachine = new StateMachine.Builder()
-                .AddState(stateA, true)
-                .AddState(stateB)
-                .AddTransition(stateA.Name, stateB.Name, out var transition, 0, Condition.CreateIntCondition("test", Condition.Operator.Equals, 1))
-                .Build();
-            stateMachine.Start();
+            var state = new MockState("A");
+            var blackboard = new Blackboard();
+			ITransition transition = new Transition(state, 0f, Condition.CreateIntCondition("test", Condition.Operator.Equals, 1));
 
-            // Act
-            stateMachine.SetInt("test", 1);
+			// Act
+			blackboard.SetInt("test", 1);
 
-            // Assert
-            Assert.That(transition.Evaluate(stateMachine, out _, out _), Is.True);
-        }
+			// Assert
+			Assert.That(transition.Evaluate(0f, blackboard, out _, out _), Is.True);
+		}
 
         [Test]
         public void Test_Transition_Evaluate_Float()
-        {
-            // Arrange
-            var stateA = new MockState("A");
-            var stateB = new MockState("B");
-            stateMachine = new StateMachine.Builder()
-                .AddState(stateA, true)
-                .AddState(stateB)
-                .AddTransition(stateA.Name, stateB.Name, out var transition, 0, Condition.CreateFloatCondition("test", Condition.Operator.Equals, 1f))
-                .Build();
-            stateMachine.Start();
+		{
+			// Arrange
+			var state = new MockState("A");
+			var blackboard = new Blackboard();
+			ITransition transition = new Transition(state, 0f, Condition.CreateFloatCondition("test", Condition.Operator.Equals, 1f));
 
-            // Act
-            stateMachine.SetFloat("test", 1f);
+			// Act
+			blackboard.SetFloat("test", 1f);
 
-            // Assert
-            Assert.That(transition.Evaluate(stateMachine, out _, out _), Is.True);
-        }
+			// Assert
+			Assert.That(transition.Evaluate(0f, blackboard, out _, out _), Is.True);
+		}
     }
 }

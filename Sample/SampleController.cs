@@ -45,7 +45,7 @@ namespace BlueCheese.Core.FSM.Sample
         {
             if (Input.GetMouseButtonDown(0))
             {
-                _fsmController.StateMachine.SetTrigger("click");
+                _fsmController.StateMachine.Blackboard.SetTrigger("click");
             }
         }
     }

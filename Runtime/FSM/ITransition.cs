@@ -8,6 +8,6 @@ namespace BlueCheese.Core.FSM
     {
         IState NextState { get; }
 
-        bool Evaluate(IStateMachine stateMachine, out IState nextstate, out float overTime);
+        bool Evaluate(float stateTime, IBlackboard blackboard, out IState nextstate, out float overTime);
     }
 }

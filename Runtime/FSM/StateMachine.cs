@@ -37,16 +37,15 @@ namespace BlueCheese.Core.FSM
 		/// </summary>
 		public IEnumerable<IState> States => _states.Values;
 
+		public IBlackboard Blackboard => _blackboard;
+
 		public event Action<IState> OnEnterState;
 		public event Action<IState> OnExitState;
 
 		private readonly Dictionary<string, IState> _states = new();
 		private readonly Dictionary<IState, List<ITransition>> _transitions = new();
 		private readonly List<ITransition> _anyTransitions = new();
-		private readonly Dictionary<string, bool> _boolParameters = new();
-		private readonly Dictionary<string, int> _intParameters = new();
-		private readonly Dictionary<string, float> _floatParameters = new();
-		private readonly HashSet<string> _triggers = new();
+		private readonly IBlackboard _blackboard = new Blackboard();
 
 		private StateMachine() { }
 
@@ -63,34 +62,6 @@ namespace BlueCheese.Core.FSM
 		/// <param name="name">The name of the state.</param>
 		/// <returns>The state with the specified name and type, or null if not found.</returns>
 		public T GetState<T>(string name) where T : IState => (T)GetState(name);
-
-		/// <summary>
-		/// Gets the trigger state with the specified name.
-		/// </summary>
-		/// <param name="name">The name of the trigger state.</param>
-		/// <returns>True if the trigger state is active, false otherwise.</returns>
-		public bool GetTriggerState(string name) => _triggers.Contains(name);
-
-		/// <summary>
-		/// Gets the boolean value with the specified name.
-		/// </summary>
-		/// <param name="name">The name of the boolean value.</param>
-		/// <returns>The boolean value with the specified name, or false if not found.</returns>
-		public bool GetBoolValue(string name) => _boolParameters.ContainsKey(name) && _boolParameters[name];
-
-		/// <summary>
-		/// Gets the integer value with the specified name.
-		/// </summary>
-		/// <param name="name">The name of the integer value.</param>
-		/// <returns>The integer value with the specified name, or 0 if not found.</returns>
-		public int GetIntValue(string name) => _intParameters.ContainsKey(name) ? _intParameters[name] : 0;
-
-		/// <summary>
-		/// Gets the float value with the specified name.
-		/// </summary>
-		/// <param name="name">The name of the float value.</param>
-		/// <returns>The float value with the specified name, or 0 if not found.</returns>
-		public float GetFloatValue(string name) => _floatParameters.ContainsKey(name) ? _floatParameters[name] : 0;
 
 		private void AddState(IState state, bool isDefault = false)
 		{
@@ -220,7 +191,7 @@ namespace BlueCheese.Core.FSM
 
 			foreach (var transition in transitions)
 			{
-				if (transition.Evaluate(this, out IState nextState, out float overTime))
+				if (transition.Evaluate(StateTime, Blackboard, out IState nextState, out float overTime))
 				{
 					SetState(nextState, overTime);
 					break;
@@ -242,7 +213,7 @@ namespace BlueCheese.Core.FSM
 			// Switch current state
 			CurrentState = nextState;
 			StateTime = 0f;
-			ResetTriggers();
+			Blackboard.ResetTriggers();
 
 			// Enter new state
 			CurrentState.OnEnter();
@@ -251,44 +222,12 @@ namespace BlueCheese.Core.FSM
 			Update(nextStateTime);
 		}
 
-		private void ResetTriggers() => _triggers.Clear();
-
-		/// <summary>
-		/// Sets the specified trigger state.
-		/// </summary>
-		/// <param name="name">The name of the trigger state.</param>
-		public void SetTrigger(string name) => _triggers.Add(name);
-
-		/// <summary>
-		/// Sets the specified boolean value.
-		/// </summary>
-		/// <param name="name">The name of the boolean value.</param>
-		/// <param name="value">The value to set.</param>
-		public void SetBool(string name, bool value) => _boolParameters[name] = value;
-
-		/// <summary>
-		/// Sets the specified integer value.
-		/// </summary>
-		/// <param name="name">The name of the integer value.</param>
-		/// <param name="value">The value to set.</param>
-		public void SetInt(string name, int value) => _intParameters[name] = value;
-
-		/// <summary>
-		/// Sets the specified float value.
-		/// </summary>
-		/// <param name="name">The name of the float value.</param>
-		/// <param name="value">The value to set.</param>
-		public void SetFloat(string name, float value) => _floatParameters[name] = value;
-
 		private void Reset()
 		{
 			_states.Clear();
 			_transitions.Clear();
 			_anyTransitions.Clear();
-			_triggers.Clear();
-			_boolParameters.Clear();
-			_intParameters.Clear();
-			_floatParameters.Clear();
+			_blackboard.Reset();
 			CurrentState = null;
 			DefaultState = null;
 			StateTime = 0f;
@@ -372,19 +311,19 @@ namespace BlueCheese.Core.FSM
 
 			public Builder AddBoolParameter(string parameterName, bool defaultValue = default)
 			{
-				_stateMachine.SetBool(parameterName, defaultValue);
+				_stateMachine.Blackboard.SetBool(parameterName, defaultValue);
 				return this;
 			}
 
 			public Builder AddIntParameter(string parameterName, int defaultValue = default)
 			{
-				_stateMachine.SetInt(parameterName, defaultValue);
+				_stateMachine.Blackboard.SetInt(parameterName, defaultValue);
 				return this;
 			}
 
 			public Builder AddFloatParameter(string parameterName, float defaultValue = default)
 			{
-				_stateMachine.SetFloat(parameterName, defaultValue);
+				_stateMachine.Blackboard.SetFloat(parameterName, defaultValue);
 				return this;
 			}
 
