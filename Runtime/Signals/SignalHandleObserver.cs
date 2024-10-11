@@ -4,7 +4,7 @@
 
 using UnityEngine;
 
-namespace Core.Signals
+namespace BlueCheese.Core.Signals
 {
     [HideInInspector]
     public class SignalHandleObserver : MonoBehaviour

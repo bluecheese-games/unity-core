@@ -6,9 +6,9 @@ using System;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
-namespace Core.Utils
+namespace BlueCheese.Core.Utils
 {
-    public class AsyncOperationAwaiter : INotifyCompletion
+	public class AsyncOperationAwaiter : INotifyCompletion
     {
         private readonly AsyncOperation _asyncOp;
         private Action _continuation;

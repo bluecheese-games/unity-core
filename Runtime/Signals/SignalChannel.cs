@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Core.Signals
+namespace BlueCheese.Core.Signals
 {
     public partial class SignalChannel
     {

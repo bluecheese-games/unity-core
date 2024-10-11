@@ -6,7 +6,7 @@ using System;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace Core.Signals
+namespace BlueCheese.Core.Signals
 {
     /// <summary>
     /// The SignalAPI main purpose is to provide a simple API to subscribe and publish signals.

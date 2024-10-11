@@ -5,7 +5,7 @@
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
-using Core.Signals;
+using BlueCheese.Core.Signals;
 using System.Threading.Tasks;
 using UnityEngine;
 
