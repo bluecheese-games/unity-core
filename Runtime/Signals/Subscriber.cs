@@ -1,4 +1,4 @@
-﻿//
+//
 // Copyright (c) 2024 BlueCheese Games All rights reserved
 //
 
@@ -6,7 +6,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Core.Signals
+namespace BlueCheese.Core.Signals
 {
 
     public partial class SignalChannel

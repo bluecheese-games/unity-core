@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2024 BlueCheese Games All rights reserved
+//
+
 using System;
 using UnityEngine;
 
@@ -12,6 +16,15 @@ namespace BlueCheese.Core
 		public FlagEnum(int value)
 		{
 			_value = value;
+		}
+
+		public FlagEnum(params T[] values)
+		{
+			_value = 0;
+			foreach (var value in values)
+			{
+				AddFlag(value);
+			}
 		}
 
 		public readonly bool HasFlag(T flag)
