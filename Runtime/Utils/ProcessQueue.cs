@@ -2,7 +2,6 @@
 // Copyright (c) 2024 BlueCheese Games All rights reserved
 //
 
-
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -11,21 +10,34 @@ namespace BlueCheese.Core
 {
 	public class ProcessQueue
 	{
-		private Queue<Item> _items = new();
+		private readonly Queue<Item> _items = new();
 		private bool _isProcessing = false;
+		private Item _processingItem;
+		private int _processedCount;
 
-		public int Count => _items.Count;
+		public int Count => _items.Count + _processedCount;
+
+		public float Progress => _isProcessing ? (float)_processedCount / Count : 0f;
+
+		public string ProcessingAction => _processingItem.Name;
+
+		public event Action<float> Progressed;
+		public event Action Complete;
 
 		public void Enqueue(Action action, string name = null)
 		{
+			if (_isProcessing)
+			{
+				throw new Exception("ProcessQueue is already processing");
+			}
 			name ??= action.Method.Name;
-			_items.Enqueue(Item.Create(name, action));
+			_items.Enqueue(new Item(action: action, name: name));
 		}
 
 		public void Enqueue(Func<Task> asyncAction, string name = null)
 		{
 			name ??= asyncAction.Method.Name;
-			_items.Enqueue(Item.CreateASync(name, asyncAction));
+			_items.Enqueue(new Item(asyncAction: asyncAction, name: name));
 		}
 
 		public async Task ProcessAsync()
@@ -34,42 +46,37 @@ namespace BlueCheese.Core
 			{
 				return;
 			}
+			if (_items.Count == 0)
+			{
+				throw new Exception("The process queue is empty");
+			}
 
 			_isProcessing = true;
+			_processedCount = 0;
 
 			while (_items.Count > 0)
 			{
-				Item item = _items.Dequeue();
-				await item.InvokeAsync();
+				_processingItem = _items.Dequeue();
+				await _processingItem.InvokeAsync();
+				_processedCount++;
+				Progressed?.Invoke(Progress);
 			}
 
 			_isProcessing = false;
+			Complete?.Invoke();
 		}
 
 		private readonly struct Item
 		{
-			private readonly string _name;
+			public readonly string Name { get; }
 			private readonly Action _action;
 			private readonly Func<Task> _asyncAction;
 
-			public string Name => _name;
-
-			public static Item Create(string name, Action action) => new(name, action);
-
-			public static Item CreateASync(string name, Func<Task> asyncAction) => new(name, asyncAction);
-
-			private Item(string name, Action action)
+			public Item(string name = null, Action action = null, Func<Task> asyncAction = null)
 			{
-				_name = name;
+				Name = name;
 				_action = action;
-				_asyncAction = null;
-			}
-
-			private Item(string name, Func<Task> asyncAction)
-			{
-				_name = name;
 				_asyncAction = asyncAction;
-				_action = null;
 			}
 
 			public async Task InvokeAsync()
