@@ -6,7 +6,7 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using BlueCheese.Core.Signals;
-using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace BlueCheese.Tests.Signals
@@ -428,7 +428,7 @@ namespace BlueCheese.Tests.Signals
             {
                 obj = new GameObject();
                 complete = true;
-                return Task.CompletedTask;
+                return UniTask.CompletedTask;
             });
 
             await _channel.PublishAsync(new TestSignal());
@@ -444,13 +444,13 @@ namespace BlueCheese.Tests.Signals
             _channel.Subscribe(async (TestSignal signal) =>
             {
                 Assert.That(value, Is.EqualTo(0));
-                await Task.Yield();
+                await UniTask.Yield();
                 value = 1;
             });
             _channel.Subscribe(async (TestSignal signal) =>
             {
                 Assert.That(value, Is.EqualTo(1));
-                await Task.Yield();
+                await UniTask.Yield();
                 value = 2;
             });
 
@@ -471,7 +471,7 @@ namespace BlueCheese.Tests.Signals
             _channel.Subscribe(async (TestSignal signal) =>
             {
                 Assert.That(value, Is.EqualTo(1));
-                await Task.Yield();
+                await UniTask.Yield();
                 value = 2;
             });
 

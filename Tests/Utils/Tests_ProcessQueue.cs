@@ -3,8 +3,8 @@
 //
 
 using System;
-using System.Threading.Tasks;
 using BlueCheese.Core;
+using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 
 public class Tests_ProcessQueue
@@ -39,7 +39,7 @@ public class Tests_ProcessQueue
 	{
 		_processQueue.Enqueue(async () =>
 		{
-			await Task.Yield();
+			await UniTask.Yield();
 		});
 
 		Assert.AreEqual(1, _processQueue.Count);
@@ -67,7 +67,7 @@ public class Tests_ProcessQueue
 		_processQueue.Enqueue(() => counter++);
 		_processQueue.Enqueue(async () =>
 		{
-			await Task.Yield();
+			await UniTask.Yield();
 			counter++;
 		});
 		_processQueue.Enqueue(() => counter++);

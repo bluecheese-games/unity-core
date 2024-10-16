@@ -2,9 +2,9 @@
 // Copyright (c) 2024 BlueCheese Games All rights reserved
 //
 
+using Cysharp.Threading.Tasks;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace BlueCheese.Core
 {
@@ -34,13 +34,13 @@ namespace BlueCheese.Core
 			_items.Enqueue(new Item(action: action, name: name));
 		}
 
-		public void Enqueue(Func<Task> asyncAction, string name = null)
+		public void Enqueue(Func<UniTask> asyncAction, string name = null)
 		{
 			name ??= asyncAction.Method.Name;
 			_items.Enqueue(new Item(asyncAction: asyncAction, name: name));
 		}
 
-		public async Task ProcessAsync()
+		public async UniTask ProcessAsync()
 		{
 			if (_isProcessing)
 			{
@@ -70,21 +70,21 @@ namespace BlueCheese.Core
 		{
 			public readonly string Name { get; }
 			private readonly Action _action;
-			private readonly Func<Task> _asyncAction;
+			private readonly Func<UniTask> _asyncAction;
 
-			public Item(string name = null, Action action = null, Func<Task> asyncAction = null)
+			public Item(string name = null, Action action = null, Func<UniTask> asyncAction = null)
 			{
 				Name = name;
 				_action = action;
 				_asyncAction = asyncAction;
 			}
 
-			public async Task InvokeAsync()
+			public async UniTask InvokeAsync()
 			{
 				if (_action != null)
 				{
 					_action.Invoke();
-					await Task.Yield();
+					await UniTask.Yield();
 				}
 				else if (_asyncAction != null)
 				{

@@ -4,7 +4,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 
 namespace BlueCheese.Core.Signals
 {
@@ -28,7 +28,7 @@ namespace BlueCheese.Core.Signals
         /// </summary>
         /// <param name="handler">The handler method</param>
         /// <param name="handle">The subscribing handle</param>
-        public void Subscribe<T>(Func<T, Task> handler, object handle = null)
+        public void Subscribe<T>(Func<T, UniTask> handler, object handle = null)
             => Subscribe(handler, handle, false);
 
         /// <summary>
@@ -37,10 +37,10 @@ namespace BlueCheese.Core.Signals
         /// </summary>
         /// <param name="handler">The handler method</param>
         /// <param name="handle">The subscribing handle</param>
-        public void SubscribeOnce<T>(Func<T, Task> handler, object handle = null)
+        public void SubscribeOnce<T>(Func<T, UniTask> handler, object handle = null)
             => Subscribe(handler, handle, true);
 
-        private void Subscribe<T>(Func<T, Task> handler, object handle = null, bool oneshot = false)
+        private void Subscribe<T>(Func<T, UniTask> handler, object handle = null, bool oneshot = false)
         {
             if (handler == null)
             {
@@ -146,7 +146,7 @@ namespace BlueCheese.Core.Signals
         /// Publish a signal asynchronously.
         /// </summary>
         /// <param name="signal">The signal instance</param>
-        public async Task PublishAsync<T>(T signal = default)
+        public async UniTask PublishAsync<T>(T signal = default)
         {
             await GetSubscriberCollection<T>().PublishAsync(signal);
         }

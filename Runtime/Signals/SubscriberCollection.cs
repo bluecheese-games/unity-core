@@ -4,7 +4,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 
 namespace BlueCheese.Core.Signals
 {
@@ -13,10 +13,10 @@ namespace BlueCheese.Core.Signals
         public interface ISubscriberCollection
         {
             void Add<T>(Action<T> handler, object handle, bool once);
-            void Add<T>(Func<T, Task> handler, object handle, bool oneShot);
+            void Add<T>(Func<T, UniTask> handler, object handle, bool oneShot);
             int Count();
             void Publish<T>(T signal);
-            Task PublishAsync<T>(T signal);
+			UniTask PublishAsync<T>(T signal);
             void Remove(ISubscriber subscriber);
             void RemoveAll();
             void RemoveAll(object handle);
@@ -33,7 +33,7 @@ namespace BlueCheese.Core.Signals
                 _subscribers.Add(subscriber);
             }
 
-            public void Add<T>(Func<T, Task> handler, object handle, bool oneShot)
+            public void Add<T>(Func<T, UniTask> handler, object handle, bool oneShot)
             {
                 var subscriber = new Subscriber<T>(handler, handle, oneShot);
                 _subscribers.Add(subscriber);
@@ -57,7 +57,7 @@ namespace BlueCheese.Core.Signals
                 }
             }
 
-            public async Task PublishAsync<T>(T signal)
+            public async UniTask PublishAsync<T>(T signal)
             {
                 var subscribersCopy = _subscribers.ToArray();
 
