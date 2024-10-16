@@ -1,7 +1,7 @@
 {
   "name": "games.bluecheese.unity-core",
   "displayName": "BlueCheese Core",
-  "version": "1.0.2",
+  "version": "1.0.0",
   "unity": "2021.1",
   "description": "Core libraries for Unity applications.",
   "keywords": [ "core", "library", "unity", "services", "signals", "FSM", "utilities" ],

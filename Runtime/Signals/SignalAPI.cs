@@ -3,7 +3,7 @@
 //
 
 using System;
-using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace BlueCheese.Core.Signals
@@ -53,7 +53,7 @@ namespace BlueCheese.Core.Signals
         /// </summary>
         /// <param name="handler">The async handler method</param>
         /// <param name="handle">The subscribing handle</param>
-        public static void Subscribe<T>(Func<T, Task> handler, object handle = null)
+        public static void Subscribe<T>(Func<T, UniTask> handler, object handle = null)
             => _defaultChannel.Subscribe(handler, handle);
 
         /// <summary>
@@ -62,7 +62,7 @@ namespace BlueCheese.Core.Signals
         /// </summary>
         /// <param name="handler">The async handler method</param>
         /// <param name="handle">The subscribing handle</param>
-        public static void SubscribeOnce<T>(Func<T, Task> handler, object handle = null)
+        public static void SubscribeOnce<T>(Func<T, UniTask> handler, object handle = null)
             => _defaultChannel.SubscribeOnce(handler, handle);
 
         /// <summary>
@@ -103,7 +103,7 @@ namespace BlueCheese.Core.Signals
         /// Publish a signal asynchronously in the default channel.
         /// </summary>
         /// <param name="signal">The signal instance</param>
-        public static async Task PublishAsync<T>(T signal = default)
+        public static async UniTask PublishAsync<T>(T signal = default)
             => await _defaultChannel.PublishAsync(signal);
     }
 }

@@ -4,7 +4,7 @@
 
 using System;
 using System.Threading;
-using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 
 namespace BlueCheese.Core.Signals
 {
@@ -16,12 +16,12 @@ namespace BlueCheese.Core.Signals
             bool HasHandle(object handle);
             bool HasHandler<T>(Action<T> handler);
             void Invoke<T>(T signal);
-            Task InvokeAsync<T>(T signal);
+			UniTask InvokeAsync<T>(T signal);
         }
 
         public class Subscriber<TSignal> : ISubscriber
         {
-            private readonly Func<TSignal, Task> _asyncHandler;
+            private readonly Func<TSignal, UniTask> _asyncHandler;
             private readonly Action<TSignal> _handler;
             private readonly object _handle;
             private readonly bool _isOneShot;
@@ -35,7 +35,7 @@ namespace BlueCheese.Core.Signals
                 _isOneShot = isOneShot;
             }
 
-            public Subscriber(Func<TSignal, Task> handler, object handle, bool isOneShot)
+            public Subscriber(Func<TSignal, UniTask> handler, object handle, bool isOneShot)
             {
                 _asyncHandler = handler;
                 _handle = handle;
@@ -47,7 +47,7 @@ namespace BlueCheese.Core.Signals
                 _handler.DynamicInvoke(signal);
             }
 
-            public async Task InvokeAsync<T>(T signal)
+            public async UniTask InvokeAsync<T>(T signal)
             {
                 if (_asyncHandler != null)
                 {
