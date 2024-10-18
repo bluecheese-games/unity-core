@@ -3,6 +3,7 @@
 //
 
 using System;
+using System.Linq;
 using UnityEngine;
 
 namespace BlueCheese.Core
@@ -11,16 +12,23 @@ namespace BlueCheese.Core
 	public struct FlagEnum<T> where T : Enum
 	{
 		[SerializeField]
-		private int _value;
+		private long _value;
 
-		public FlagEnum(int value)
+		private long _lastToStringValue;
+		private string _stringValue;
+
+		public FlagEnum(long value)
 		{
 			_value = value;
+			_lastToStringValue = 0;
+			_stringValue = string.Empty;
 		}
 
 		public FlagEnum(params T[] values)
 		{
 			_value = 0;
+			_lastToStringValue = 0;
+			_stringValue = string.Empty;
 			foreach (var value in values)
 			{
 				AddFlag(value);
@@ -44,6 +52,33 @@ namespace BlueCheese.Core
 
 		public static implicit operator FlagEnum<T>(T value) => new(GetFlagValue(value));
 
-		private static int GetFlagValue(T flag) => 1 << Convert.ToInt32(flag);
+		private static long GetFlagValue(T flag) => 1L << Convert.ToInt32(flag);
+
+		public override string ToString()
+		{
+			if (_lastToStringValue == _value)
+			{
+				// Returns the cached value
+				return _stringValue;
+			}
+
+			_lastToStringValue = _value;
+			_stringValue = string.Join(", ", Enum.GetValues(typeof(T))
+				.Cast<T>()
+				.Where(HasFlag)
+				.Select(x => x.ToString()));
+
+			return _stringValue;
+		}
+
+		public readonly string ToBinaryString(bool includeLeadingZeros = false)
+		{
+			string result = Convert.ToString(_value, 2);
+			if (!includeLeadingZeros)
+			{
+				return result;
+			}
+			return result.PadLeft(sizeof(long) * 8, '0');
+		}
 	}
 }
