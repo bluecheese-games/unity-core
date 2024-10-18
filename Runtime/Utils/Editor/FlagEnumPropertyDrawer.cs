@@ -11,7 +11,7 @@ namespace BlueCheese.Core.Editor
 	[CustomPropertyDrawer(typeof(FlagEnum<>))]
 	public class FlagEnumPropertyDrawer : PropertyDrawer
 	{
-		private const int MaxFlagValues = 32; // 32 bits in an int
+		private const int MaxFlagValues = 64; // 64 bits in an long
 
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
