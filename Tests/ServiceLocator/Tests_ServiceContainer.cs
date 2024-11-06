@@ -23,6 +23,7 @@ namespace BlueCheese.Tests.ServiceLocator
         public void Test_RegisterService_ByType()
         {
             _container.Register<FooService>();
+            _container.Startup();
 
             Assert.That(_container.Get<FooService>(), Is.Not.Null);
 
@@ -38,8 +39,9 @@ namespace BlueCheese.Tests.ServiceLocator
         public void Test_RegisterService_ByConcreteType_WithInstance()
         {
             _container.Register<FooService>().WithInstance(new FooService());
+			_container.Startup();
 
-            Assert.That(_container.Get<FooService>(), Is.Not.Null);
+			Assert.That(_container.Get<FooService>(), Is.Not.Null);
 
             // We can't get it by abstract type
             Assert.Throws(typeof(Exception), () =>
@@ -52,8 +54,9 @@ namespace BlueCheese.Tests.ServiceLocator
         public void Test_RegisterService_ByAbstractType_WithInstance()
         {
             _container.Register<IFooService>().WithInstance(new FooService());
+			_container.Startup();
 
-            Assert.That(_container.Get<IFooService>(), Is.Not.Null);
+			Assert.That(_container.Get<IFooService>(), Is.Not.Null);
 
             // We can't get it by concrete type
             Assert.Throws(typeof(Exception), () =>
@@ -115,8 +118,9 @@ namespace BlueCheese.Tests.ServiceLocator
         public void Test_RegisterService_ByAbstractType()
         {
             _container.Register<IFooService, FooService>();
+			_container.Startup();
 
-            Assert.That(_container.Get<IFooService>(), Is.Not.Null);
+			Assert.That(_container.Get<IFooService>(), Is.Not.Null);
 
             // the service has been registered by interface
             // so we can't get it by type
@@ -143,10 +147,11 @@ namespace BlueCheese.Tests.ServiceLocator
         {
             _container.Register<FooService>();
             _container.Register<BarService>();
+			_container.Startup();
 
-            // Register 2 services with the same interface is allowed
-            // as long as they are not accessed by interface
-            Assert.That(_container.Get<FooService>(), Is.Not.Null);
+			// Register 2 services with the same interface is allowed
+			// as long as they are not accessed by interface
+			Assert.That(_container.Get<FooService>(), Is.Not.Null);
             Assert.That(_container.Get<BarService>(), Is.Not.Null);
 
             // the service has been registered by type
@@ -162,8 +167,9 @@ namespace BlueCheese.Tests.ServiceLocator
         {
             _container.Register<FooService>();
             _container.Register<IBarService, BarService>();
+			_container.Startup();
 
-            var service1 = _container.Get<FooService>();
+			var service1 = _container.Get<FooService>();
             var service2 = _container.Get<IBarService>();
 
             Assert.That(service1.Print(), Is.EqualTo("foo"));
@@ -176,8 +182,9 @@ namespace BlueCheese.Tests.ServiceLocator
             _container.Register<FooService>();
             _container.Register<IBarService, BarService>();
             _container.Register<FooBarService>();
+			_container.Startup();
 
-            var service = _container.Get<FooBarService>();
+			var service = _container.Get<FooBarService>();
             Assert.That(service.Print(), Is.EqualTo("foo bar"));
         }
 
@@ -186,20 +193,21 @@ namespace BlueCheese.Tests.ServiceLocator
         {
             _container.Register<FooBarService>();
 
-            // FooBarService depends on FooService and BarService
-            // They haven't been registered, so it should fail
-            Assert.Throws(typeof(Exception), () =>
-            {
-                var service = _container.Get<FooBarService>();
-            });
+			// FooBarService depends on FooService and BarService
+			// They haven't been registered, so it should fail
+			Assert.Throws(typeof(Exception), () =>
+			{
+				_container.Startup();
+			});
         }
 
         [Test]
         public void Test_RegisterServices_AsSingleton()
         {
             _container.Register<FooService>().AsSingleton();
+			_container.Startup();
 
-            var service1 = _container.Get<FooService>();
+			var service1 = _container.Get<FooService>();
             var service2 = _container.Get<FooService>();
             Assert.That(service1, Is.SameAs(service2));
         }
@@ -208,8 +216,9 @@ namespace BlueCheese.Tests.ServiceLocator
         public void Test_RegisterServices_AsTransient()
         {
             _container.Register<FooService>().AsTransient();
+			_container.Startup();
 
-            var service1 = _container.Get<FooService>();
+			var service1 = _container.Get<FooService>();
             var service2 = _container.Get<FooService>();
             Assert.That(service1, Is.Not.SameAs(service2));
         }
@@ -220,8 +229,9 @@ namespace BlueCheese.Tests.ServiceLocator
             FooService service = new FooService();
 
             _container.Register(service);
+			_container.Startup();
 
-            var service1 = _container.Get<FooService>();
+			var service1 = _container.Get<FooService>();
             var service2 = _container.Get<FooService>();
 
             // Ensure that this is a singleton
@@ -232,8 +242,9 @@ namespace BlueCheese.Tests.ServiceLocator
         public void Test_RegisterServices_GenericType_AsSingleton()
         {
             _container.Register(typeof(IGenericService<>), typeof(GenericService<>)).AsSingleton();
+			_container.Startup();
 
-            var service1 = _container.Get<IGenericService<string>>();
+			var service1 = _container.Get<IGenericService<string>>();
             var service2 = _container.Get<IGenericService<string>>();
             var service3 = _container.Get<IGenericService<int>>();
 
@@ -247,8 +258,9 @@ namespace BlueCheese.Tests.ServiceLocator
         public void Test_RegisterServices_GenericType_AsTransient()
         {
             _container.Register(typeof(IGenericService<>), typeof(GenericService<>)).AsTransient();
+			_container.Startup();
 
-            var service1 = _container.Get<IGenericService<string>>();
+			var service1 = _container.Get<IGenericService<string>>();
             var service2 = _container.Get<IGenericService<string>>();
 
             // Ensure that this is a singleton per generic type
@@ -260,8 +272,9 @@ namespace BlueCheese.Tests.ServiceLocator
         {
             _container.Register<IFooService, FooService>();
             _container.RegisterDecorator<IFooService, DecoratorFooService>();
+			_container.Startup();
 
-            var service = _container.Get<IFooService>();
+			var service = _container.Get<IFooService>();
 
             // Ensure that the decorator service is returned
             Assert.That(service, Is.TypeOf<DecoratorFooService>());
@@ -279,9 +292,10 @@ namespace BlueCheese.Tests.ServiceLocator
 
             // Act
             _container.RegisterSubContainer(subContainer);
+			_container.Startup();
 
-            // Assert
-            Assert.That(_container.Get<FooService>(), Is.Not.Null);
+			// Assert
+			Assert.That(_container.Get<FooService>(), Is.Not.Null);
         }
 
         [Test]
@@ -297,6 +311,7 @@ namespace BlueCheese.Tests.ServiceLocator
 
 			// Act
 			_container.RegisterSubContainer(subContainer);
+			_container.Startup();
 
 			// Assert
 			var service = _container.Get<CountableService>();
@@ -342,8 +357,9 @@ namespace BlueCheese.Tests.ServiceLocator
         {
             _container.Register<IFooService, FooService>();
             _container.Register<IBarService, BarService>();
+			_container.Startup();
 
-            var testedObject = new InjectableObject();
+			var testedObject = new InjectableObject();
             Assert.That(testedObject.Foo, Is.Null);
             Assert.That(testedObject.Bar, Is.Null);
 
@@ -358,7 +374,8 @@ namespace BlueCheese.Tests.ServiceLocator
         {
             _container.Register<IChildService, ChildService>();
             _container.Register<IBaseService, BaseService>();
-            var child = new InjectableChildObject();
+			_container.Startup();
+			var child = new InjectableChildObject();
 
             _container.Inject(child, false);
 
@@ -371,7 +388,8 @@ namespace BlueCheese.Tests.ServiceLocator
         {
             _container.Register<IChildService, ChildService>();
             _container.Register<IBaseService, BaseService>();
-            var child = new InjectableChildObject();
+			_container.Startup();
+			var child = new InjectableChildObject();
 
             _container.Inject(child, true);
 
@@ -384,7 +402,8 @@ namespace BlueCheese.Tests.ServiceLocator
         {
             _container.Register<IChildService, ChildService>();
             _container.Register<IBaseService, BaseService>();
-            var child = new InjectableChildObject();
+			_container.Startup();
+			var child = new InjectableChildObject();
             var parent = (InjectableBaseObject)child;
 
             _container.Inject(parent);
@@ -398,7 +417,9 @@ namespace BlueCheese.Tests.ServiceLocator
         {
             _container.Register<OptionnableService>()
                 .WithOptions(() => new OptionnableService.Options { Foo = "Bar" });
-            var service = _container.Get<OptionnableService>();
+			_container.Startup();
+
+			var service = _container.Get<OptionnableService>();
 
             Assert.That(service.Print(), Is.EqualTo("Bar"));
         }
@@ -407,7 +428,9 @@ namespace BlueCheese.Tests.ServiceLocator
         public void Test_RegisterService_WithOptions_Default()
         {
             _container.Register<OptionnableService>();
-            var service = _container.Get<OptionnableService>();
+			_container.Startup();
+
+			var service = _container.Get<OptionnableService>();
 
             Assert.That(service.Print(), Is.Null);
         }
@@ -418,7 +441,9 @@ namespace BlueCheese.Tests.ServiceLocator
             _container.Register<OptionnableService>()
                 .WithOptions(() => new OptionnableService.Options { Foo = "Bar" })
                 .AsTransient();
-            var service1 = _container.Get<OptionnableService>();
+			_container.Startup();
+
+			var service1 = _container.Get<OptionnableService>();
             var service2 = _container.Get<OptionnableService>();
 
             Assert.That(service1.Print(), Is.EqualTo("Bar"));
@@ -430,7 +455,9 @@ namespace BlueCheese.Tests.ServiceLocator
         {
             _container.Register<IFooService, CountableService>();
             _container.Register<IBarService, CountableService>();
-            var fooService = _container.Get<IFooService>();
+			_container.Startup();
+
+			var fooService = _container.Get<IFooService>();
             var barService = _container.Get<IBarService>();
 
             Assert.That(CountableService.Count, Is.EqualTo(1));
@@ -442,7 +469,9 @@ namespace BlueCheese.Tests.ServiceLocator
         {
             _container.Register<IFooService, CountableService>();
             _container.Register<CountableService>();
-            var fooService = _container.Get<IFooService>();
+			_container.Startup();
+
+			var fooService = _container.Get<IFooService>();
             var countableService = _container.Get<CountableService>();
 
             Assert.That(CountableService.Count, Is.EqualTo(1));
@@ -454,7 +483,9 @@ namespace BlueCheese.Tests.ServiceLocator
         {
             _container.Register<CountableService>();
             _container.Register<IFooService, CountableService>();
-            var fooService = _container.Get<IFooService>();
+			_container.Startup();
+
+			var fooService = _container.Get<IFooService>();
             var countableService = _container.Get<CountableService>();
 
             Assert.That(CountableService.Count, Is.EqualTo(1));
@@ -467,7 +498,9 @@ namespace BlueCheese.Tests.ServiceLocator
             CountableService service = new();
             _container.Register(service);
             _container.Register<IFooService, CountableService>();
-            var fooService = _container.Get<IFooService>();
+			_container.Startup();
+
+			var fooService = _container.Get<IFooService>();
             var countableService = _container.Get<CountableService>();
 
             Assert.That(CountableService.Count, Is.EqualTo(1));
@@ -480,7 +513,9 @@ namespace BlueCheese.Tests.ServiceLocator
             CountableService service = new();
             _container.Register<IFooService, CountableService>();
             _container.Register(service);
-            var fooService = _container.Get<IFooService>();
+			_container.Startup();
+
+			var fooService = _container.Get<IFooService>();
             var countableService = _container.Get<CountableService>();
 
             Assert.That(CountableService.Count, Is.EqualTo(1));
@@ -492,6 +527,7 @@ namespace BlueCheese.Tests.ServiceLocator
 		{
 			_container.Register<FooService>();
 			_container.Register<IBarService, BarService>();
+			_container.Startup();
 
 			var service = _container.Instantiate<FooBarService>();
 			Assert.That(service.Print(), Is.EqualTo("foo bar"));
