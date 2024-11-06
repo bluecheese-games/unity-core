@@ -33,6 +33,8 @@ namespace BlueCheese.Core.ServiceLocator
 		private readonly ConcurrentDictionary<Type, Service> _decoratedServices = new();
 		private readonly List<ServiceContainer> _subContainers = new();
 
+		private State _state = State.Registering;
+
 		/// <summary>
 		/// Reference to the default services container.
 		/// </summary>
@@ -46,6 +48,7 @@ namespace BlueCheese.Core.ServiceLocator
 			_services.Clear();
 			_decoratedServices.Clear();
 			_subContainers.Clear();
+			_state = State.Registering;
 		}
 
 		/// <summary>
@@ -161,13 +164,26 @@ namespace BlueCheese.Core.ServiceLocator
 		/// </summary>
 		public void Startup()
 		{
+			if (_state != State.Registering)
+			{
+				return;
+			}
+
+			_state = State.Started;
+
 			foreach (var service in _decoratedServices.Values)
 			{
 				service.Startup();
 			}
+
 			foreach (var service in _services.Values)
 			{
 				service.Startup();
+			}
+
+			foreach (var container in _subContainers)
+			{
+				container.Startup();
 			}
 		}
 
@@ -176,10 +192,17 @@ namespace BlueCheese.Core.ServiceLocator
 		/// </summary>
 		public void Shutdown()
 		{
+			if (_state != State.Started)
+			{
+				return;
+			}
+
 			foreach (var service in _services.Values)
 			{
 				service.Shutdown();
 			}
+
+			_state = State.Shutdown;
 		}
 
 		/// <summary>
@@ -199,7 +222,7 @@ namespace BlueCheese.Core.ServiceLocator
 		{
 			if (typeof(IOptions).IsAssignableFrom(abstractType) && service != null)
 			{
-				return service.Options ?? Activator.CreateInstance(abstractType);
+				return service.Options ?? Instantiate(abstractType);
 			}
 
 			var services = _services;
@@ -234,6 +257,12 @@ namespace BlueCheese.Core.ServiceLocator
 				}
 				throw new Exception($"Service not found: {keyType}");
 			}
+
+			if (_state != State.Started)
+			{
+				throw new Exception("Cannot resolve services before the container is started");
+			}
+
 			return services[keyType].GetInstance(genericParameterType);
 		}
 
@@ -247,6 +276,11 @@ namespace BlueCheese.Core.ServiceLocator
 		/// </summary>
 		public object Instantiate(Type type)
 		{
+			if (_state != State.Started)
+			{
+				throw new Exception("Cannot instantiate services before the container is started");
+			}
+
 			return Activator.CreateInstance(type, ResolveParameters(type, null));
 		}
 
@@ -273,6 +307,11 @@ namespace BlueCheese.Core.ServiceLocator
 		/// <returns>The instance</returns>
 		public TService Inject<TService>(TService instance, bool includeBaseClasses = false)
 		{
+			if (_state != State.Started)
+			{
+				throw new Exception("Cannot inject services before the container is started");
+			}
+
 			Type type = typeof(TService);
 			while (type != null && type != typeof(MonoBehaviour))
 			{
@@ -302,6 +341,13 @@ namespace BlueCheese.Core.ServiceLocator
 		private Service GetServiceWithConcreteType(Type concreteType)
 		{
 			return _services.Values.FirstOrDefault(s => s.HasConcreteType(concreteType));
+		}
+
+		private enum State
+		{
+			Registering,
+			Started,
+			Shutdown
 		}
 	}
 
