@@ -17,6 +17,7 @@ namespace BlueCheese.Core.Editor
 		public static Texture2D Cross => GetTexture("CrossIcon");
 		public static Texture2D Play => GetTexture("d_PlayButton");
 		public static Texture2D Stop => GetTexture("d_PauseButton");
+		public static Texture2D Restart => GetTexture("Refresh");
 
 		private static Dictionary<string, Texture2D> _icons = new Dictionary<string, Texture2D>();
 
