@@ -2,7 +2,7 @@
 // Copyright (c) 2024 BlueCheese Games All rights reserved
 //
 
-using BlueCheese.Core;
+using BlueCheese.Core.Utils;
 using NUnit.Framework;
 
 public class Tests_FlagEnum

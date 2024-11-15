@@ -7,7 +7,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
-namespace BlueCheese.Core.Editor
+namespace BlueCheese.Core.Utils.Editor
 {
 	public static class EditorIcon
 	{
@@ -81,10 +81,11 @@ namespace BlueCheese.Core.Editor
 			return text;
 		}
 
-		public static void DrawSearchableKeyProperty(SerializedProperty keyProperty, GUIContent label, string[] keys)
+		public static void DrawSearchableKeyProperty(SerializedProperty keyProperty, GUIContent label, string[] keys, int maxItems = 0)
 		{
 			bool validKey = keys.Contains(keyProperty.stringValue);
 
+			EditorGUILayout.Space(-EditorGUIUtility.singleLineHeight - 4);
 			EditorGUILayout.BeginHorizontal();
 			EditorGUILayout.PrefixLabel(label);
 			var icon = validKey ? EditorIcon.Valid : EditorIcon.Warning;
@@ -93,7 +94,7 @@ namespace BlueCheese.Core.Editor
 			var propRect = GUIUtility.GUIToScreenRect(GUILayoutUtility.GetLastRect());
 			if (GUILayout.Button(new GUIContent(EditorIcon.Search), GUILayout.Width(30), GUILayout.Height(20)))
 			{
-				SearchKeyWindow.Open(keyProperty, keys, propRect);
+				SearchKeyWindow.Open(keyProperty, keys, propRect, maxItems);
 			}
 			EditorGUILayout.EndHorizontal();
 		}

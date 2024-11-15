@@ -3,7 +3,7 @@
 //
 
 using System;
-using BlueCheese.Core;
+using BlueCheese.Core.Utils;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 

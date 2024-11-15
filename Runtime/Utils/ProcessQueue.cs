@@ -6,7 +6,7 @@ using Cysharp.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 
-namespace BlueCheese.Core
+namespace BlueCheese.Core.Utils
 {
 	public class ProcessQueue
 	{
