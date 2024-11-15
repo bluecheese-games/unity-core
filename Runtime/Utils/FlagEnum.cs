@@ -6,7 +6,7 @@ using System;
 using System.Linq;
 using UnityEngine;
 
-namespace BlueCheese.Core
+namespace BlueCheese.Core.Utils
 {
 	[Serializable]
 	public struct FlagEnum<T> where T : Enum
