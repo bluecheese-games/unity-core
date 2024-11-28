@@ -7,7 +7,7 @@ using System;
 namespace BlueCheese.Core.Utils
 {
 	[Flags]
-	public enum PlayTime
+	public enum PlayTimeEvent
 	{
 		None = 0,
 		OnAwake = 1 << 0,
