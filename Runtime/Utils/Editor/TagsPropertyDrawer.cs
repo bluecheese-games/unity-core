@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using static Codice.Client.Common.Connection.AskCredentialsToUser;
 
 namespace BlueCheese.Core.Utils.Editor
 {
@@ -41,9 +42,6 @@ namespace BlueCheese.Core.Utils.Editor
 
 			var tagsProperty = property.FindPropertyRelative("_values");
 
-
-
-
 			float maxWidth = position.width;
 			if (maxWidth > 10 && maxWidth != _maxWidth)
 			{
@@ -73,7 +71,7 @@ namespace BlueCheese.Core.Utils.Editor
 						rect.xMin = rect.xMax - 13;
 						rect.yMin += 3;
 						GUI.contentColor = Color.gray;
-						if (GUI.Button(rect, EditorIcon.Cross, GUIStyle.none))
+						if (GUI.enabled && GUI.Button(rect, EditorIcon.Cross, GUIStyle.none))
 						{
 							tagsProperty.DeleteArrayElementAtIndex(tagLabel.index);
 							removed = true;
@@ -125,21 +123,24 @@ namespace BlueCheese.Core.Utils.Editor
 			}*/
 			//GUI.backgroundColor = Color.white;
 			//EditorGUILayout.EndHorizontal();
-			EditorGUILayout.BeginHorizontal();
-			EditorGUILayout.PrefixLabel("Add Tag");
-			_newTag = EditorGUILayout.TextField(_newTag);
-			bool submit = Event.current.type == EventType.KeyUp && Event.current.keyCode == KeyCode.Return;
-			bool tagIsValid = !string.IsNullOrEmpty(_newTag) && !tags.Contains(_newTag);
-			GUI.enabled = tagIsValid;
-			if ((submit || GUILayout.Button(EditorIcon.Plus, EditorStyles.miniButton)) && tagIsValid)
+			if (GUI.enabled)
 			{
-				tagsProperty.arraySize++;
-				tagsProperty.GetArrayElementAtIndex(tagsProperty.arraySize - 1).stringValue = _newTag;
-				_newTag = "";
-				_labels = null;
+				EditorGUILayout.BeginHorizontal();
+				EditorGUILayout.PrefixLabel("Add Tag");
+				_newTag = EditorGUILayout.TextField(_newTag);
+				bool submit = Event.current.type == EventType.KeyUp && Event.current.keyCode == KeyCode.Return;
+				bool tagIsValid = !string.IsNullOrEmpty(_newTag) && !tags.Contains(_newTag);
+				GUI.enabled = tagIsValid;
+				if ((submit || GUILayout.Button(EditorIcon.Plus, EditorStyles.miniButton)) && tagIsValid)
+				{
+					tagsProperty.arraySize++;
+					tagsProperty.GetArrayElementAtIndex(tagsProperty.arraySize - 1).stringValue = _newTag;
+					_newTag = "";
+					_labels = null;
+				}
+				GUI.enabled = true;
+				EditorGUILayout.EndHorizontal();
 			}
-			GUI.enabled = true;
-			EditorGUILayout.EndHorizontal();
 		}
 
 		private List<List<TagLabel>> CreateLabels(float maxWidth, SerializedProperty property)
