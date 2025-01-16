@@ -15,12 +15,12 @@ namespace BlueCheese.Core.FSM
 		/// <summary>
 		/// Gets the current state of the state machine.
 		/// </summary>
-		public IState CurrentState { get; private set; } = null;
+		public string CurrentState { get; private set; } = null;
 
 		/// <summary>
 		/// Gets the default state of the state machine.
 		/// </summary>
-		public IState DefaultState { get; private set; } = null;
+		public string DefaultState { get; private set; } = null;
 
 		/// <summary>
 		/// Gets the time spent in the current state.
@@ -35,15 +35,15 @@ namespace BlueCheese.Core.FSM
 		/// <summary>
 		/// Gets all states in the state machine.
 		/// </summary>
-		public IEnumerable<IState> States => _states.Values;
+		public ICollection<string> States => _stateHandlers.Keys;
 
 		public IBlackboard Blackboard => _blackboard;
 
-		public event Action<IState> OnEnterState;
-		public event Action<IState> OnExitState;
+		public event Action<string> OnEnterState;
+		public event Action<string> OnExitState;
 
-		private readonly Dictionary<string, IState> _states = new();
-		private readonly Dictionary<IState, List<ITransition>> _transitions = new();
+		private readonly Dictionary<string, IStateHandler> _stateHandlers = new();
+		private readonly Dictionary<string, List<ITransition>> _transitions = new();
 		private readonly List<ITransition> _anyTransitions = new();
 		private readonly IBlackboard _blackboard = new Blackboard();
 
@@ -54,28 +54,28 @@ namespace BlueCheese.Core.FSM
 		/// </summary>
 		/// <param name="name">The name of the state.</param>
 		/// <returns>The state with the specified name, or null if not found.</returns>
-		public IState GetState(string name) => _states.ContainsKey(name) ? _states[name] : null;
+		public IStateHandler GetStateHandler(string name) => _stateHandlers.ContainsKey(name) ? _stateHandlers[name] : null;
 
 		/// <summary>
 		/// Gets the state with the specified name and type.
 		/// </summary>
 		/// <param name="name">The name of the state.</param>
 		/// <returns>The state with the specified name and type, or null if not found.</returns>
-		public T GetState<T>(string name) where T : IState => (T)GetState(name);
+		public T GetStateHandler<T>(string name) where T : IStateHandler => (T)GetStateHandler(name);
 
-		private void AddState(IState state, bool isDefault = false)
+		private void AddState(string state, IStateHandler handler = null, bool isDefault = false)
 		{
 			if (IsStarted)
 			{
 				throw new InvalidOperationException("Cannot add state: StateMachine is already started");
 			}
 
-			if (_states.ContainsKey(state.Name))
+			if (_stateHandlers.ContainsKey(state))
 			{
 				throw new InvalidOperationException("Cannot add state: state already exists with this name");
 			}
 
-			_states.Add(state.Name, state);
+			_stateHandlers.Add(state, handler);
 
 			if (DefaultState == null || isDefault)
 			{
@@ -83,14 +83,14 @@ namespace BlueCheese.Core.FSM
 			}
 		}
 
-		private ITransition AddTransitionFromAnyState(string toStateName, params ICondition[] conditions)
+		private ITransition AddTransitionFromAnyState(string toState, params ICondition[] conditions)
 		{
-			IState toState = GetState(toStateName)
-				?? throw new InvalidOperationException($"Cannot add transition: To State not found ({toStateName})");
+			if (!States.Contains(toState))
+				throw new InvalidOperationException($"Cannot add transition: To State not found ({toState})");
 
 			if (conditions == null || conditions.Length == 0)
 			{
-				throw new InvalidOperationException($"Cannot add transition: From any state transition must have at least one condition (to state {toStateName})");
+				throw new InvalidOperationException($"Cannot add transition: From any state transition must have at least one condition (to state {toState})");
 			}
 
 			var transition = new Transition(toState, 0f, conditions);
@@ -98,12 +98,13 @@ namespace BlueCheese.Core.FSM
 			return transition;
 		}
 
-		private ITransition AddTransition(string fromStateName, string toStateName, float exitTime = 0f, params ICondition[] conditions)
+		private ITransition AddTransition(string fromState, string toState, float exitTime = 0f, params ICondition[] conditions)
 		{
-			IState fromState = GetState(fromStateName)
-				?? throw new InvalidOperationException($"Cannot add transition: From State not found ({fromStateName})");
-			IState toState = GetState(toStateName)
-				?? throw new InvalidOperationException($"Cannot add transition: To State not found ({toStateName})");
+			if (!States.Contains(fromState))
+				throw new InvalidOperationException($"Cannot add transition: From State not found ({fromState})");
+
+			if (!States.Contains(toState))
+				throw new InvalidOperationException($"Cannot add transition: To State not found ({toState})");
 
 			var transition = new Transition(toState, exitTime, conditions);
 			if (_transitions.ContainsKey(fromState))
@@ -112,7 +113,7 @@ namespace BlueCheese.Core.FSM
 				{
 					if (trans.NextState == toState)
 					{
-						throw new InvalidOperationException($"Cannot add transition: This transition already exists ({fromStateName} => {toStateName})");
+						throw new InvalidOperationException($"Cannot add transition: This transition already exists ({fromState} => {toState})");
 					}
 				}
 
@@ -158,17 +159,13 @@ namespace BlueCheese.Core.FSM
 
 			StateTime += deltaTime;
 
-			CurrentState.OnUpdate(deltaTime);
+			if (_stateHandlers.TryGetValue(CurrentState, out var handler) && handler != null)
+			{
+				handler.OnUpdate(deltaTime);
+			}
 
 			TryChangeState();
 		}
-
-		/// <summary>
-		/// Sets the state of the state machine.
-		/// </summary>
-		/// <param name="stateName">The name of the state to set.</param>
-		/// <param name="stateTime">The time spent in the state.</param>
-		public void SetState(string stateName, float stateTime = 0f) => SetState(GetState(stateName), stateTime);
 
 		private void TryChangeState()
 		{
@@ -191,7 +188,7 @@ namespace BlueCheese.Core.FSM
 
 			foreach (var transition in transitions)
 			{
-				if (transition.Evaluate(StateTime, Blackboard, out IState nextState, out float overTime))
+				if (transition.Evaluate(StateTime, Blackboard, out string nextState, out float overTime))
 				{
 					SetState(nextState, overTime);
 					break;
@@ -199,7 +196,12 @@ namespace BlueCheese.Core.FSM
 			}
 		}
 
-		private void SetState(IState nextState, float nextStateTime = 0f)
+		/// <summary>
+		/// Sets the state of the state machine.
+		/// </summary>
+		/// <param name="stateName">The name of the state to set.</param>
+		/// <param name="stateTime">The time spent in the state.</param>
+		public void SetState(string nextState, float nextStateTime = 0f)
 		{
 			if (!IsStarted || nextState == null)
 			{
@@ -207,7 +209,10 @@ namespace BlueCheese.Core.FSM
 			}
 
 			// Exit previous state
-			CurrentState?.OnExit();
+			if (CurrentState != null && _stateHandlers.TryGetValue(CurrentState, out var handler) && handler != null)
+			{
+				handler.OnExit();
+			}
 			OnExitState?.Invoke(CurrentState);
 
 			// Switch current state
@@ -216,7 +221,10 @@ namespace BlueCheese.Core.FSM
 			Blackboard.ResetTriggers();
 
 			// Enter new state
-			CurrentState.OnEnter();
+			if (_stateHandlers.TryGetValue(CurrentState, out handler) && handler != null)
+			{
+				handler.OnEnter();
+			}
 			OnEnterState?.Invoke(CurrentState);
 
 			Update(nextStateTime);
@@ -224,7 +232,7 @@ namespace BlueCheese.Core.FSM
 
 		private void Reset()
 		{
-			_states.Clear();
+			_stateHandlers.Clear();
 			_transitions.Clear();
 			_anyTransitions.Clear();
 			_blackboard.Reset();
@@ -249,9 +257,22 @@ namespace BlueCheese.Core.FSM
 			/// <param name="state">The state to add.</param>
 			/// <param name="isDefault">Whether the state should be set as the default state.</param>
 			/// <returns>The builder instance.</returns>
-			public Builder AddState(IState state, bool isDefault = false)
+			public Builder AddState(string state, bool isDefault = false)
 			{
-				_stateMachine.AddState(state, isDefault);
+				_stateMachine.AddState(state, null, isDefault);
+				return this;
+			}
+
+			/// <summary>
+			/// Adds a state to the state machine.
+			/// </summary>
+			/// <param name="state">The state to add.</param>
+			/// <param name="stateHandler">The handler for the state.</param>
+			/// <param name="isDefault">Whether the state should be set as the default state.</param>
+			/// <returns>The builder instance.</returns>
+			public Builder AddState(string state, IStateHandler stateHandler, bool isDefault = false)
+			{
+				_stateMachine.AddState(state, stateHandler, isDefault);
 				return this;
 			}
 

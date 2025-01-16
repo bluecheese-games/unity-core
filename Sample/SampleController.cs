@@ -18,9 +18,9 @@ namespace BlueCheese.Core.FSM.Sample
             _text.text = string.Empty;
         }
 
-        public void HandleEnterState(IState state)
+        public void HandleEnterState(string state)
         {
-            switch (state.Name)
+            switch (state)
             {
                 case "intro":
                     Log("Enter Intro State");

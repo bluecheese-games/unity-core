@@ -249,7 +249,7 @@ namespace BlueCheese.Core.FSM.Graph
 
             foreach (var state in States)
             {
-                builder.AddState(new State(state.Name), state.IsDefault);
+                builder.AddState(state.Name, null, state.IsDefault);
             }
 
             foreach (var transitionData in Transitions)

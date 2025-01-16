@@ -13,7 +13,7 @@ namespace BlueCheese.Tests.FSM
 		public void Test_Transition_Evaluate_ExitTime()
 		{
 			// Arrange
-			var state = new MockState("A");
+			var state = "A";
 			var blackboard = new Blackboard();
 			ITransition transition = new Transition(state, 1f);
 
@@ -27,7 +27,7 @@ namespace BlueCheese.Tests.FSM
         public void Test_Transition_Evaluate_Trigger()
         {
             // Arrange
-            var state = new MockState("A");
+            var state = "A";
             var blackboard = new Blackboard();
             ITransition transition = new Transition(state, 0f, Condition.CreateTriggerCondition("test"));
 
@@ -42,7 +42,7 @@ namespace BlueCheese.Tests.FSM
         public void Test_Transition_Evaluate_Bool()
         {
             // Arrange
-            var state = new MockState("A");
+            var state = "A";
             var blackboard = new Blackboard();
             ITransition transition = new Transition(state, 0f, Condition.CreateBoolCondition("test", true));
 
@@ -57,7 +57,7 @@ namespace BlueCheese.Tests.FSM
         public void Test_Transition_Evaluate_Int()
         {
             // Arrange
-            var state = new MockState("A");
+            var state = "A";
             var blackboard = new Blackboard();
 			ITransition transition = new Transition(state, 0f, Condition.CreateIntCondition("test", Condition.Operator.Equals, 1));
 
@@ -72,7 +72,7 @@ namespace BlueCheese.Tests.FSM
         public void Test_Transition_Evaluate_Float()
 		{
 			// Arrange
-			var state = new MockState("A");
+			var state = "A";
 			var blackboard = new Blackboard();
 			ITransition transition = new Transition(state, 0f, Condition.CreateFloatCondition("test", Condition.Operator.Equals, 1f));
 

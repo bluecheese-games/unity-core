@@ -17,10 +17,10 @@ namespace BlueCheese.Core.FSM.Mono
     }
 
     [Serializable]
-    public class EnterStateEvent : UnityEvent<IState> { }
+    public class EnterStateEvent : UnityEvent<string> { }
 
     [Serializable]
-    public class ExitStateEvent : UnityEvent<IState> { }
+    public class ExitStateEvent : UnityEvent<string> { }
 
     public class StateMachineController : MonoBehaviour
     {

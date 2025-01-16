@@ -20,7 +20,7 @@ namespace BlueCheese.Tests.FSM
         {
             // Arrange / Act
             stateMachine = new StateMachine.Builder()
-                .AddState(new MockState("A"), true)
+                .AddState("A", true)
                 .Build();
 
             // Assert
@@ -39,7 +39,7 @@ namespace BlueCheese.Tests.FSM
         public void Test_AddState()
         {
             // Arrange / Act
-            var state = new MockState("A");
+            var state = "A";
             stateMachine = new StateMachine.Builder()
                 .AddState(state)
                 .Build();
@@ -54,22 +54,22 @@ namespace BlueCheese.Tests.FSM
         public void Test_AddState_With_2_Default_States()
         {
             // Arrange / Act
-            var stateA = new MockState("A");
-            var stateB = new MockState("B");
+            var stateA = "A";
+            var stateB = "B";
             stateMachine = new StateMachine.Builder()
                 .AddState(stateA, true)
                 .AddState(stateB, true)
                 .Build();
 
             // Assert
-            Assert.That(stateMachine.DefaultState.Name, Is.EqualTo(stateB.Name));
+            Assert.That(stateMachine.DefaultState, Is.EqualTo(stateB));
         }
 
         [Test]
         public void Test_AddState_Twice()
         {
             // Arrange
-            var state = new MockState("A");
+            var state = "A";
 
             // Act / Assert
             Assert.Throws<InvalidOperationException>(() => new StateMachine.Builder()
@@ -82,8 +82,8 @@ namespace BlueCheese.Tests.FSM
         public void Test_AddState_WithSameName()
         {
             // Arrange
-            var stateA = new MockState("A");
-            var stateABis = new MockState("A");
+            var stateA = "A";
+            var stateABis = "A";
 
             // Act / Assert
             Assert.Throws<InvalidOperationException>(() => new StateMachine.Builder()
@@ -93,47 +93,49 @@ namespace BlueCheese.Tests.FSM
         }
 
         [Test]
-        public void Test_GetState()
+        public void Test_GetStateHandler()
         {
             // Arrange
-            var state = new MockState("A");
+            var state = "A";
+            var stateAHandler = new MockStateHandler();
             stateMachine = new StateMachine.Builder()
-                .AddState(state)
+                .AddState(state, stateAHandler)
                 .Build();
 
             // Act
-            var stateFromMachine = stateMachine.GetState("A");
+            var stateFromMachine = stateMachine.GetStateHandler("A");
 
             // Assert
-            Assert.That(stateFromMachine, Is.EqualTo(state));
+            Assert.That(stateFromMachine, Is.EqualTo(stateAHandler));
         }
 
         [Test]
-        public void Test_GetState_As_Type()
+        public void Test_GetStateHandler_AsType()
         {
             // Arrange
-            var state = new MockState("A");
+            var state = "A";
+            var stateHandler = new MockStateHandler();
             stateMachine = new StateMachine.Builder()
-                .AddState(state)
+                .AddState(state, stateHandler)
                 .Build();
 
             // Act
-            var stateFromMachine = stateMachine.GetState<MockState>("A");
+            var stateHandlerFromMachine = stateMachine.GetStateHandler<MockStateHandler>("A");
 
             // Assert
-            Assert.That(stateFromMachine, Is.EqualTo(state));
+            Assert.That(stateHandlerFromMachine, Is.EqualTo(stateHandler));
         }
 
         [Test]
         public void Test_AddTransition()
         {
             // Arrange / Act
-            var stateA = new MockState("A");
-            var stateB = new MockState("B");
+            var stateA = "A";
+            var stateB = "B";
             new StateMachine.Builder()
                 .AddState(stateA, true)
                 .AddState(stateB)
-                .AddTransition(stateA.Name, stateB.Name, out var transition)
+                .AddTransition(stateA, stateB, out var transition)
                 .Build();
 
             // Assert
@@ -145,10 +147,10 @@ namespace BlueCheese.Tests.FSM
         public void Test_AddTransition_ToSameState()
         {
             // Arrange / Act
-            var state = new MockState("A");
+            var state = "A";
             new StateMachine.Builder()
                 .AddState(state, true)
-                .AddTransition(state.Name, state.Name, out var transition)
+                .AddTransition(state, state, out var transition)
                 .Build();
 
             // Assert
@@ -159,15 +161,15 @@ namespace BlueCheese.Tests.FSM
         public void Test_AddTransition_Twice()
         {
             // Arrange
-            var stateA = new MockState("A");
-            var stateB = new MockState("B");
+            var stateA = "A";
+            var stateB = "B";
 
             // Act / Assert
             Assert.Throws<InvalidOperationException>(() => new StateMachine.Builder()
                 .AddState(stateA, true)
                 .AddState(stateB)
-                .AddTransition(stateA.Name, stateB.Name)
-                .AddTransition(stateA.Name, stateB.Name)
+                .AddTransition(stateA, stateB)
+                .AddTransition(stateA, stateB)
                 .Build());
         }
 
@@ -175,13 +177,13 @@ namespace BlueCheese.Tests.FSM
         public void Test_AddTransition_Where_StateDoesNotExist()
         {
             // Arrange
-            var stateA = new MockState("A");
-            var stateB = new MockState("B");
+            var stateA = "A";
+            var stateB = "B";
 
             // Act / Assert
             Assert.Throws<InvalidOperationException>(() => new StateMachine.Builder()
                 .AddState(stateA, true)
-                .AddTransition(stateA.Name, stateB.Name)
+                .AddTransition(stateA, stateB)
                 .Build());
         }
 
@@ -189,22 +191,22 @@ namespace BlueCheese.Tests.FSM
         public void Test_AddTransition_FromAnyState_WithoutCondition()
         {
             // Arrange
-            var state = new MockState("A");
+            var state = "A";
 
             // Act / Assert
             Assert.Throws<InvalidOperationException>(() => new StateMachine.Builder()
                 .AddState(state)
-                .AddTransitionFromAnyState(state.Name));
+                .AddTransitionFromAnyState(state));
         }
 
         [Test]
         public void Test_AddTransition_FromAnyState()
         {
             // Arrange / Act
-            var state = new MockState("A");
+            var state = "A";
             new StateMachine.Builder()
                 .AddState(state)
-                .AddTransitionFromAnyState(state.Name, out var transition, Condition.CreateTriggerCondition("dummy"))
+                .AddTransitionFromAnyState(state, out var transition, Condition.CreateTriggerCondition("dummy"))
                 .Build();
 
             // Assert
@@ -215,13 +217,13 @@ namespace BlueCheese.Tests.FSM
         public void Test_AddTransition_FromAnyState_WithNotExistingState()
         {
             // Arrange
-            var stateA = new MockState("A");
-            var stateB = new MockState("B");
+            var stateA = "A";
+            var stateB = "B";
 
             // Act / Assert
             Assert.Throws<InvalidOperationException>(() => new StateMachine.Builder()
                 .AddState(stateA)
-                .AddTransitionFromAnyState(stateB.Name, Condition.CreateTriggerCondition("dummy"))
+                .AddTransitionFromAnyState(stateB, Condition.CreateTriggerCondition("dummy"))
                 .Build());
         }
 
@@ -229,13 +231,13 @@ namespace BlueCheese.Tests.FSM
         public void Test_AddTransition_FromAnyState_Twice()
         {
             // Arrange
-            var state = new MockState("A");
+            var state = "A";
 
             // Act
             new StateMachine.Builder()
                 .AddState(state)
-                .AddTransitionFromAnyState(state.Name, out var transition1, Condition.CreateTriggerCondition("dummy"))
-                .AddTransitionFromAnyState(state.Name, out var transition2, Condition.CreateTriggerCondition("dummy"))
+                .AddTransitionFromAnyState(state, out var transition1, Condition.CreateTriggerCondition("dummy"))
+                .AddTransitionFromAnyState(state, out var transition2, Condition.CreateTriggerCondition("dummy"))
                 .Build();
 
             // Assert
@@ -248,7 +250,7 @@ namespace BlueCheese.Tests.FSM
         public void Test_StateMachine_Start()
         {
             // Arrange
-            var state = new MockState("A");
+            var state = "A";
             stateMachine = new StateMachine.Builder()
                 .AddState(state, true)
                 .Build();
@@ -265,12 +267,12 @@ namespace BlueCheese.Tests.FSM
         public void Test_Start_Transition_WithoutCondition()
         {
             // Arrange
-            var stateA = new MockState("A");
-            var stateB = new MockState("B");
+            var stateA = "A";
+            var stateB = "B";
             stateMachine = new StateMachine.Builder()
                 .AddState(stateA, true)
                 .AddState(stateB)
-                .AddTransition(stateA.Name, stateB.Name)
+                .AddTransition(stateA, stateB)
                 .Build();
 
             // Act
@@ -284,12 +286,14 @@ namespace BlueCheese.Tests.FSM
         public void Test_Update_With_TimeTransition()
         {
             // Arrange
-            var stateA = new MockState("A");
-            var stateB = new MockState("B");
+            var stateA = "A";
+            var stateAHandler = new MockStateHandler();
+            var stateB = "B";
+            var stateBHandler = new MockStateHandler();
             stateMachine = new StateMachine.Builder()
-                .AddState(stateA, true)
-                .AddState(stateB)
-                .AddTransition(stateA.Name, stateB.Name, 1f)
+                .AddState(stateA, stateAHandler, true)
+                .AddState(stateB, stateBHandler)
+                .AddTransition(stateA, stateB, 1f)
                 .Build();
             stateMachine.Start();
 
@@ -298,22 +302,23 @@ namespace BlueCheese.Tests.FSM
 
             // Assert
             Assert.That(stateMachine.CurrentState, Is.EqualTo(stateB));
-            Assert.That(stateA.OnEnterCallCount, Is.EqualTo(1));
-            Assert.That(stateA.OnExitCallCount, Is.EqualTo(1));
-            Assert.That(stateB.OnEnterCallCount, Is.EqualTo(1));
-            Assert.That(stateB.OnExitCallCount, Is.EqualTo(0));
+            Assert.That(stateAHandler.OnEnterCallCount, Is.EqualTo(1));
+            Assert.That(stateAHandler.OnExitCallCount, Is.EqualTo(1));
+            Assert.That(stateBHandler.OnEnterCallCount, Is.EqualTo(1));
+            Assert.That(stateBHandler.OnExitCallCount, Is.EqualTo(0));
         }
 
         [Test]
         public void Test_Update()
         {
             // Arrange
-            var stateA = new MockState("A");
-            var stateB = new MockState("B");
+            var stateA = "A";
+            var stateAHandler = new MockStateHandler();
+            var stateB = "B";
             stateMachine = new StateMachine.Builder()
-                .AddState(stateA, true)
+                .AddState(stateA, stateAHandler, true)
                 .AddState(stateB)
-                .AddTransition(stateA.Name, stateB.Name, 1f)
+                .AddTransition(stateA, stateB, 1f)
                 .Build();
             stateMachine.Start();
 
@@ -322,19 +327,19 @@ namespace BlueCheese.Tests.FSM
 
             // Assert
             Assert.That(stateMachine.StateTime, Is.EqualTo(0.5f));
-            Assert.That(stateA.OnUpdateTime, Is.EqualTo(0.5f));
+            Assert.That(stateAHandler.OnUpdateTime, Is.EqualTo(0.5f));
         }
 
         [Test]
         public void Test_Update_OverTime()
         {
             // Arrange
-            var stateA = new MockState("A");
-            var stateB = new MockState("B");
+            var stateA = "A";
+            var stateB = "B";
             stateMachine = new StateMachine.Builder()
                 .AddState(stateA, true)
                 .AddState(stateB)
-                .AddTransition(stateA.Name, stateB.Name, 1f)
+                .AddTransition(stateA, stateB, 1f)
                 .Build();
             stateMachine.Start();
 
@@ -349,12 +354,12 @@ namespace BlueCheese.Tests.FSM
         public void Test_Update_TranstionFromAnyState()
         {
             // Arrange
-            var stateA = new MockState("A");
-            var stateB = new MockState("B");
+            var stateA = "A";
+            var stateB = "B";
             stateMachine = new StateMachine.Builder()
                 .AddState(stateA, true)
                 .AddState(stateB)
-                .AddTransitionFromAnyState(stateB.Name, Condition.CreateTriggerCondition("trigger"))
+                .AddTransitionFromAnyState(stateB, Condition.CreateTriggerCondition("trigger"))
                 .Build();
             stateMachine.Start();
             stateMachine.Blackboard.SetTrigger("trigger");
@@ -370,43 +375,34 @@ namespace BlueCheese.Tests.FSM
         public void Test_SetState()
         {
             // Arrange
-            var stateA = new MockState("A");
-            var stateB = new MockState("B");
+            var stateA = "A";
+            var stateB = "B";
             stateMachine = new StateMachine.Builder()
                 .AddState(stateA, true)
                 .AddState(stateB)
-                .AddTransition(stateA.Name, stateB.Name, 0f, Condition.CreateTriggerCondition("trigger"))
+                .AddTransition(stateA, stateB, 0f, Condition.CreateTriggerCondition("trigger"))
                 .Build();
             stateMachine.Start();
 
             // Act
-            stateMachine.SetState(stateB.Name);
+            stateMachine.SetState(stateB);
 
             // Assert
             Assert.That(stateMachine.CurrentState, Is.EqualTo(stateB));
         }
     }
 
-    public class MockState : IState
+    public class MockStateHandler : IStateHandler
     {
         public int OnEnterCallCount = 0;
         public int OnExitCallCount = 0;
         public float OnUpdateTime = 0f;
-
-        public MockState(string name)
-        {
-            Name = name;
-        }
-
-        public string Name { get; private set; }
 
         public void OnEnter() { OnEnterCallCount++; }
 
         public void OnExit() { OnExitCallCount++; }
 
         public void OnUpdate(float deltaTime) { OnUpdateTime += deltaTime; }
-
-        public override string ToString() => Name;
 
         public void Dispose() { }
     }

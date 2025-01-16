@@ -4,10 +4,8 @@
 
 namespace BlueCheese.Core.FSM
 {
-    public interface IState
+    public interface IStateHandler
     {
-        public string Name { get; }
-
         public void OnEnter();
 
         public void OnUpdate(float deltaTime);
