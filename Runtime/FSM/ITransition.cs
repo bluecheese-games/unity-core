@@ -6,8 +6,8 @@ namespace BlueCheese.Core.FSM
 {
     public interface ITransition
     {
-        IState NextState { get; }
+		string NextState { get; }
 
-        bool Evaluate(float stateTime, IBlackboard blackboard, out IState nextstate, out float overTime);
+        bool Evaluate(float stateTime, IBlackboard blackboard, out string nextstate, out float overTime);
     }
 }

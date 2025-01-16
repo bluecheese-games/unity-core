@@ -4,7 +4,7 @@
 
 namespace BlueCheese.Core.FSM
 {
-    public class State : IState
+    public class State : IStateHandler
     {
         public string Name { get; private set; }
 

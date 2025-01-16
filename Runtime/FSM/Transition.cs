@@ -9,16 +9,16 @@ namespace BlueCheese.Core.FSM
         private readonly ICondition[] _conditions;
         private readonly float _exitTime = 0f;
 
-        public IState NextState { get; private set; }
+        public string NextState { get; private set; }
 
-        public Transition(IState nextState, float exitTime, params ICondition[] conditions)
+        public Transition(string nextState, float exitTime, params ICondition[] conditions)
         {
             NextState = nextState;
             _exitTime = exitTime;
             _conditions = conditions;
         }
 
-        public bool Evaluate(float stateTime, IBlackboard blackboard, out IState nextstate, out float overTime)
+        public bool Evaluate(float stateTime, IBlackboard blackboard, out string nextstate, out float overTime)
         {
             overTime = 0f;
             nextstate = null;

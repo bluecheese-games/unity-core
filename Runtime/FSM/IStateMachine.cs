@@ -9,18 +9,18 @@ namespace BlueCheese.Core.FSM
 {
 	public interface IStateMachine : IDisposable
     {
-        IState CurrentState { get; }
-        IState DefaultState { get; }
+        string CurrentState { get; }
+		string DefaultState { get; }
         bool IsStarted { get; }
-		IEnumerable<IState> States { get; }
+		ICollection<string> States { get; }
         float StateTime { get; }
 		IBlackboard Blackboard { get; }
 
 		void Start();
         void Update(float deltaTime);
 
-		IState GetState(string name);
-		T GetState<T>(string name) where T : IState;
+		IStateHandler GetStateHandler(string name);
+		T GetStateHandler<T>(string name) where T : IStateHandler;
 		void SetState(string stateName, float stateTime = 0);
 	}
 }
