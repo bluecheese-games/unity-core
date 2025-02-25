@@ -7,7 +7,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using UnityEngine;
 
 namespace BlueCheese.Core.ServiceLocator
 {
@@ -313,7 +312,7 @@ namespace BlueCheese.Core.ServiceLocator
 			}
 
 			Type type = typeof(TService);
-			while (type != null && type != typeof(MonoBehaviour))
+			while (type != null)
 			{
 				var fields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic
 					| BindingFlags.DeclaredOnly | BindingFlags.Instance);

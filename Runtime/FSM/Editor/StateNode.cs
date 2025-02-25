@@ -7,7 +7,7 @@ using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace BlueCheese.Core.FSM.Graph
+namespace BlueCheese.Core.FSM.Editor
 {
     public class StateNode : BaseNode
     {
@@ -29,19 +29,20 @@ namespace BlueCheese.Core.FSM.Graph
 
         override public void Draw()
         {
-            _nameInput = new TextField()
+            title = Name;
+            /*_nameInput = new TextField()
             {
                 value = Name,
             };
             _nameInput.RegisterValueChangedCallback(OnNameValueChanged);
-            titleContainer.Add(_nameInput);
+            titleContainer.Add(_nameInput);*/
 
             _defaultToggle = new RadioButton("Default")
             {
                 value = IsDefault
             };
             _defaultToggle.RegisterValueChangedCallback(OnDefaultValueChanged);
-            titleContainer.Add(_defaultToggle);
+            contentContainer.Add(_defaultToggle);
 
             InputPort = InstantiatePort(Orientation.Horizontal, Direction.Input, Port.Capacity.Multi, typeof(TransitionNode));
             InputPort.portName = "In";
@@ -58,7 +59,7 @@ namespace BlueCheese.Core.FSM.Graph
 
         private void OnNameValueChanged(ChangeEvent<string> evt)
         {
-            Name = evt.newValue;
+            title = Name = evt.newValue;
             DispatchOnContentValueChangeEvent();
         }
 
@@ -70,10 +71,31 @@ namespace BlueCheese.Core.FSM.Graph
 
         public void Redraw()
         {
-            _nameInput.value = Name;
+            title = Name;
             _defaultToggle.value = IsDefault;
 
             RefreshExpandedState();
         }
-    }
+
+		public override void BuildContextualMenu(ContextualMenuPopulateEvent evt)
+		{
+			base.BuildContextualMenu(evt);
+			evt.menu.AppendAction("Rename", RenameState, RenameStateStatus);
+		}
+
+        private void RenameState(DropdownMenuAction action)
+		{
+			_nameInput = new TextField()
+			{
+				value = Name,
+			};
+			_nameInput.RegisterValueChangedCallback(OnNameValueChanged);
+			titleContainer.Add(_nameInput);
+		}
+
+        private DropdownMenuAction.Status RenameStateStatus(DropdownMenuAction action)
+		{
+			return DropdownMenuAction.Status.Normal;
+		}
+	}
 }

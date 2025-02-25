@@ -1,0 +1,7 @@
+#Grid
+{
+	--thick-lines: 0;
+	--spacing: 25;
+	--grid-background-color: rgb(35, 35, 35);
+	--line-color: rgb(32, 32, 32);
+}

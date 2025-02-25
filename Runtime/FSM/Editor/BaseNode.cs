@@ -6,16 +6,11 @@ using System;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
-namespace BlueCheese.Core.FSM.Editor
+namespace BlueCheese.Core.FSM.Graph
 {
     public class BaseNode : Node
     {
         public event Action OnContentValueChange;
-
-        public BaseNode()
-        {
-            AddToClassList("fsm-graph-node");
-        }
 
         public virtual void Initialize(Vector2 position)
         {

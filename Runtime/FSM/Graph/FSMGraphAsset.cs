@@ -15,7 +15,7 @@ namespace BlueCheese.Core.FSM.Graph
     {
         public List<GraphState> States;
         public List<GraphTransition> Transitions;
-        public List<GraphParameter> Parameters;
+        public List<GraphParameter> Blackboard;
 
         private GraphState defaultState;
         private int stateCount = -1;
@@ -39,9 +39,9 @@ namespace BlueCheese.Core.FSM.Graph
                     state.OnValidate(this);
                 }
             }
-            if (Parameters != null)
+            if (Blackboard != null)
             {
-                foreach (GraphParameter parameter in Parameters)
+                foreach (GraphParameter parameter in Blackboard)
                 {
                     parameter.OnValidate();
                 }
@@ -141,10 +141,10 @@ namespace BlueCheese.Core.FSM.Graph
 
                 _states = graph.States.Select(s => s.Name).ToArray();
 
-                var parameters = graph.Parameters.ToDictionary(p => p.Name);
+                var blackboard = graph.Blackboard.ToDictionary(p => p.Name);
                 foreach (var condition in Conditions)
                 {
-                    condition.OnValidate(parameters);
+                    condition.OnValidate(blackboard);
                 }
             }
         }
@@ -192,12 +192,12 @@ namespace BlueCheese.Core.FSM.Graph
             [AllowNesting]
             public float TargetFloatValue;
 
-            private Dictionary<string, GraphParameter> _parameters;
-            private string[] ParametersList => _parameters != null ? _parameters.Keys.ToArray() : new string[] { "-no parameter-" };
-            private Condition.Type ParameterType => _parameters != null && _parameters.ContainsKey(ParameterName) ? _parameters[ParameterName].Type : Condition.Type.Predicate;
+            private Dictionary<string, GraphParameter> _blackboard;
+            private string[] ParametersList => _blackboard != null ? _blackboard.Keys.ToArray() : new string[] { "-no parameter-" };
+            private Condition.Type ParameterType => _blackboard != null && _blackboard.ContainsKey(ParameterName) ? _blackboard[ParameterName].Type : Condition.Type.Predicate;
             private bool IsNotTrigger => ParameterType != Condition.Type.Trigger;
 
-            private void Refresh() => OnValidate(_parameters);
+            private void Refresh() => OnValidate(_blackboard);
 
             public ICondition ToCondition(Dictionary<string, GraphParameter> parameters)
             {
@@ -217,21 +217,21 @@ namespace BlueCheese.Core.FSM.Graph
                 };
             }
 
-            public void OnValidate(Dictionary<string, GraphParameter> parameters)
+            public void OnValidate(Dictionary<string, GraphParameter> blackboard)
             {
-                if (parameters == null)
+                if (blackboard == null)
                 {
                     return;
                 }
 
-                _parameters = parameters;
+                _blackboard = blackboard;
 
-                if (!_parameters.ContainsKey(ParameterName))
+                if (!_blackboard.ContainsKey(ParameterName))
                 {
-                    ParameterName = _parameters.First().Value.Name;
+                    ParameterName = _blackboard.First().Value.Name;
                 }
 
-                var parameter = _parameters[ParameterName];
+                var parameter = _blackboard[ParameterName];
                 DisplayName = parameter.Type switch
                 {
                     Condition.Type.Trigger => $"-- {parameter.Name} --",
@@ -254,7 +254,7 @@ namespace BlueCheese.Core.FSM.Graph
 
             foreach (var transitionData in Transitions)
             {
-                var parameterDict = Parameters.ToDictionary(p => p.Name);
+                var parameterDict = Blackboard.ToDictionary(p => p.Name);
                 if (string.IsNullOrEmpty(transitionData.FromState))
                 {
                     builder.AddTransitionFromAnyState(transitionData.ToState, transitionData.GetConditionArray(parameterDict));
@@ -265,7 +265,7 @@ namespace BlueCheese.Core.FSM.Graph
                 }
             }
 
-            foreach (var parameter in Parameters)
+            foreach (var parameter in Blackboard)
             {
                 switch (parameter.Type)
                 {
