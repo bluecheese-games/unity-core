@@ -42,7 +42,7 @@ namespace BlueCheese.Core.FSM
 		public event Action<string> OnEnterState;
 		public event Action<string> OnExitState;
 
-		private readonly Dictionary<string, IStateHandler> _stateHandlers = new();
+		private readonly Dictionary<string, CompositeStateHandler> _stateHandlers = new();
 		private readonly Dictionary<string, List<ITransition>> _transitions = new();
 		private readonly List<ITransition> _anyTransitions = new();
 		private readonly IBlackboard _blackboard = new Blackboard();
@@ -50,18 +50,11 @@ namespace BlueCheese.Core.FSM
 		private StateMachine() { }
 
 		/// <summary>
-		/// Gets the state with the specified name.
+		/// Gets the composite state handler with the specified name.
 		/// </summary>
 		/// <param name="name">The name of the state.</param>
 		/// <returns>The state with the specified name, or null if not found.</returns>
-		public IStateHandler GetStateHandler(string name) => _stateHandlers.ContainsKey(name) ? _stateHandlers[name] : null;
-
-		/// <summary>
-		/// Gets the state with the specified name and type.
-		/// </summary>
-		/// <param name="name">The name of the state.</param>
-		/// <returns>The state with the specified name and type, or null if not found.</returns>
-		public T GetStateHandler<T>(string name) where T : IStateHandler => (T)GetStateHandler(name);
+		public CompositeStateHandler GetStateHandler(string name) => _stateHandlers.ContainsKey(name) ? _stateHandlers[name] : null;
 
 		private void AddState(string state, IStateHandler handler = null, bool isDefault = false)
 		{
@@ -75,7 +68,7 @@ namespace BlueCheese.Core.FSM
 				throw new InvalidOperationException("Cannot add state: state already exists with this name");
 			}
 
-			_stateHandlers.Add(state, handler);
+			_stateHandlers.Add(state, new(handler));
 
 			if (DefaultState == null || isDefault)
 			{
@@ -159,7 +152,7 @@ namespace BlueCheese.Core.FSM
 
 			StateTime += deltaTime;
 
-			if (_stateHandlers.TryGetValue(CurrentState, out var handler) && handler != null)
+			if (_stateHandlers.TryGetValue(CurrentState, out var handler))
 			{
 				handler.OnUpdate(deltaTime);
 			}
@@ -209,7 +202,7 @@ namespace BlueCheese.Core.FSM
 			}
 
 			// Exit previous state
-			if (CurrentState != null && _stateHandlers.TryGetValue(CurrentState, out var handler) && handler != null)
+			if (CurrentState != null && _stateHandlers.TryGetValue(CurrentState, out var handler))
 			{
 				handler.OnExit();
 			}
@@ -221,7 +214,7 @@ namespace BlueCheese.Core.FSM
 			Blackboard.ResetTriggers();
 
 			// Enter new state
-			if (_stateHandlers.TryGetValue(CurrentState, out handler) && handler != null)
+			if (_stateHandlers.TryGetValue(CurrentState, out handler))
 			{
 				handler.OnEnter();
 			}
@@ -250,6 +243,18 @@ namespace BlueCheese.Core.FSM
 		public class Builder
 		{
 			private readonly StateMachine _stateMachine = new StateMachine();
+
+			/// <summary>
+			/// Adds states to the state machine from an enum.
+			/// </summary>
+			public Builder FromEnum<TEnum>() where TEnum : Enum
+			{
+				foreach (var state in Enum.GetNames(typeof(TEnum)))
+				{
+					_stateMachine.AddState(state);
+				}
+				return this;
+			}
 
 			/// <summary>
 			/// Adds a state to the state machine.

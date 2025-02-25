@@ -19,8 +19,7 @@ namespace BlueCheese.Core.FSM
 		void Start();
         void Update(float deltaTime);
 
-		IStateHandler GetStateHandler(string name);
-		T GetStateHandler<T>(string name) where T : IStateHandler;
+		CompositeStateHandler GetStateHandler(string name);
 		void SetState(string stateName, float stateTime = 0);
 	}
 }

@@ -2,15 +2,15 @@
 // Copyright (c) 2024 BlueCheese Games All rights reserved
 //
 
+using BlueCheese.Core.FSM.Graph;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace BlueCheese.Core.FSM.Graph
+namespace BlueCheese.Core.FSM.Editor
 {
     public class FSMGraphView : GraphView
     {
@@ -38,17 +38,22 @@ namespace BlueCheese.Core.FSM.Graph
 
         private void AddGridBackground()
         {
-            GridBackground gridBackground = new GridBackground();
+			GridBackground background = new()
+			{
+				name = "Grid"
+			};
+			background.StretchToParentSize();
 
-            gridBackground.StretchToParentSize();
-
-            Insert(0, gridBackground);
+            Insert(0, background);
         }
 
         private void AddStyles()
         {
-            styleSheets.Add((StyleSheet)EditorGUIUtility.Load("FSM/GraphViewStyles.uss"));
-            styleSheets.Add((StyleSheet)EditorGUIUtility.Load("FSM/GraphNodeStyles.uss"));
+            //var styleSheet = EditorGUIUtility.Load("GraphView.uss") as StyleSheet;
+            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/unity-core/Runtime/FSM/Editor/Styles/GraphView.uss");
+
+			styleSheets.Add(styleSheet);
+            //styleSheets.Add((StyleSheet)EditorGUIUtility.Load("FSM/GraphNodeStyles.uss"));
         }
 
         private void AddManipulators()
@@ -67,8 +72,8 @@ namespace BlueCheese.Core.FSM.Graph
             var manipulator = new ContextualMenuManipulator(
                 menuEvent =>
                 {
-                    menuEvent.menu.AppendAction("Create State", actionEvent => AddElement(CreateNode<StateNode>(actionEvent.eventInfo.localMousePosition)));
-                    menuEvent.menu.AppendAction("Create Transition", actionEvent => AddElement(CreateNode<TransitionNode>(actionEvent.eventInfo.localMousePosition)));
+                    menuEvent.menu.AppendAction("Create State", actionEvent => CreateNode<StateNode>(actionEvent.eventInfo.localMousePosition));
+                    menuEvent.menu.AppendAction("Create Transition", actionEvent => CreateNode<TransitionNode>(actionEvent.eventInfo.localMousePosition));
                 });
 
             return manipulator;

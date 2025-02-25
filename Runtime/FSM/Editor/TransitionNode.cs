@@ -8,7 +8,7 @@ using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace BlueCheese.Core.FSM.Graph
+namespace BlueCheese.Core.FSM.Editor
 {
     public class TransitionNode : BaseNode
     {

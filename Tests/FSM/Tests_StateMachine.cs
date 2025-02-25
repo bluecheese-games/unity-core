@@ -5,6 +5,7 @@
 using BlueCheese.Core.FSM;
 using NUnit.Framework;
 using System;
+using System.Linq;
 
 namespace BlueCheese.Tests.FSM
 {
@@ -92,6 +93,25 @@ namespace BlueCheese.Tests.FSM
                 .Build());
         }
 
+		enum StateNames { A, B };
+
+		[Test]
+		public void Test_StateMachine_Build_FromEnum()
+        {
+			// Arrange
+			StateNames defaultState = default;
+
+            // Act
+            stateMachine = new StateMachine.Builder()
+                .FromEnum<StateNames>()
+                .Build();
+
+			// Assert
+			Assert.That(stateMachine, Is.Not.Null);
+            Assert.That(stateMachine.DefaultState, Is.EqualTo(defaultState.ToString()));
+            Assert.That(stateMachine.States.Count(), Is.EqualTo(2));
+        }
+
         [Test]
         public void Test_GetStateHandler()
         {
@@ -103,27 +123,10 @@ namespace BlueCheese.Tests.FSM
                 .Build();
 
             // Act
-            var stateFromMachine = stateMachine.GetStateHandler("A");
+            var stateHandlers = stateMachine.GetStateHandler("A");
 
             // Assert
-            Assert.That(stateFromMachine, Is.EqualTo(stateAHandler));
-        }
-
-        [Test]
-        public void Test_GetStateHandler_AsType()
-        {
-            // Arrange
-            var state = "A";
-            var stateHandler = new MockStateHandler();
-            stateMachine = new StateMachine.Builder()
-                .AddState(state, stateHandler)
-                .Build();
-
-            // Act
-            var stateHandlerFromMachine = stateMachine.GetStateHandler<MockStateHandler>("A");
-
-            // Assert
-            Assert.That(stateHandlerFromMachine, Is.EqualTo(stateHandler));
+            Assert.That(stateHandlers.Handlers, Has.Member(stateAHandler));
         }
 
         [Test]

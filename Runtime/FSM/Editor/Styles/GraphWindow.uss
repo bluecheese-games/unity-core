@@ -1,0 +1,52 @@
+.fsm-popup
+{
+	position: absolute;
+	flex-grow: 1;
+	background-color: rgba(0, 0, 0, 0.3);
+	justify-content: center;
+}
+
+.fsm-popup-content
+{
+	width: 300px;
+	height: 200px;
+	background-color: grey;
+	align-self: center;
+	justify-content: center;
+	align-content: center;
+	overflow: hidden;
+	border-radius: 5px;
+}
+
+.fsm-popup-close
+{
+	position: absolute;
+	right: 0;
+	top: 0;
+	width: 20px;
+	height: 20px;
+}
+
+.fsm-popup-text
+{
+	color: rgb(0, 0, 0);
+	font-size: 20px;
+	text-overflow: clip;
+	align-self: center;
+}
+
+.fsm-popup-input
+{
+	width: 200px;
+	height: 30px;
+	margin: 10px;
+	align-self: center;
+}
+
+.fsm-popup-confirm
+{
+	width: 100px;
+	height: 30px;
+	margin: 10px;
+	align-self: center;
+}

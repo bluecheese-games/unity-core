@@ -44,7 +44,7 @@ MonoBehaviour:
       TargetBoolValue: 0
       TargetIntValue: 0
       TargetFloatValue: 0
-  Parameters:
+  Blackboard:
   - DisplayName: '[Trigger] click'
     Name: click
     Type: 0
