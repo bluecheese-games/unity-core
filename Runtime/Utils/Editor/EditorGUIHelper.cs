@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2024 BlueCheese Games All rights reserved
+// Copyright (c) 2025 BlueCheese Games All rights reserved
 //
 
 using System.Collections.Generic;
@@ -86,7 +86,6 @@ namespace BlueCheese.Core.Utils.Editor
 		{
 			bool validKey = keys.Contains(keyProperty.stringValue);
 
-			EditorGUILayout.Space(-EditorGUIUtility.singleLineHeight - 4);
 			EditorGUILayout.BeginHorizontal();
 			EditorGUILayout.PrefixLabel(label);
 			var icon = validKey ? EditorIcon.Valid : EditorIcon.Warning;

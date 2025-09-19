@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2024 BlueCheese Games All rights reserved
+// Copyright (c) 2025 BlueCheese Games All rights reserved
 //
 
 using System;
@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using UnityEditor.Compilation;
 
 namespace BlueCheese.Core.ServiceLocator
 {

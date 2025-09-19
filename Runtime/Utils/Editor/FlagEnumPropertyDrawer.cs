@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2024 BlueCheese Games All rights reserved
+// Copyright (c) 2025 BlueCheese Games All rights reserved
 //
 
 using System;
@@ -11,7 +11,7 @@ namespace BlueCheese.Core.Utils.Editor
 	[CustomPropertyDrawer(typeof(FlagEnum<>))]
 	public class FlagEnumPropertyDrawer : PropertyDrawer
 	{
-		private const int MaxFlagValues = 64; // 64 bits in an long
+		private const int MaxFlagValues = 64;
 
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
@@ -25,28 +25,61 @@ namespace BlueCheese.Core.Utils.Editor
 				return;
 			}
 
-			EditorGUI.BeginProperty(position, label, property);
+			// Draw prefix label and adjust position for the field
+			position = EditorGUI.PrefixLabel(position, label);
 
-			var labels = new string[enumValues.Length];
-			for (int i = 0; i < enumValues.Length; i++)
-			{
-				labels[i] = enumValues.GetValue(i).ToString();
-			}
+			long value = valueProperty.longValue;
+			string display = BuildDisplayString(enumType, value);
 
-			var selectedValue = 0;
-			for (int i = 0; i < enumValues.Length; i++)
+			if (EditorGUI.DropdownButton(position, new GUIContent(display), FocusType.Keyboard))
 			{
-				if ((valueProperty.intValue & (1 << i)) != 0)
+				GenericMenu menu = new GenericMenu();
+				for (int i = 0; i < enumValues.Length; i++)
 				{
-					selectedValue |= 1 << i;
+					object enumValObj = enumValues.GetValue(i);
+					string enumName = enumValObj.ToString();
+					long flagValue = 1L << i; // Use Convert.ToInt64(enumValObj) for custom enums
+					bool isSet = (value & flagValue) != 0;
+
+					menu.AddItem(new GUIContent(enumName), isSet, () =>
+					{
+						long newValue = value;
+						if (isSet)
+							newValue &= ~flagValue;
+						else
+							newValue |= flagValue;
+
+						valueProperty.serializedObject.Update();
+						valueProperty.longValue = newValue;
+						valueProperty.serializedObject.ApplyModifiedProperties();
+					});
+				}
+				menu.DropDown(position);
+			}
+		}
+
+		private string BuildDisplayString(Type enumType, long value)
+		{
+			var enumValues = Enum.GetValues(enumType);
+			System.Text.StringBuilder sb = new System.Text.StringBuilder();
+			bool first = true;
+			for (int i = 0; i < enumValues.Length; i++)
+			{
+				long flagValue = 1L << i; // Use Convert.ToInt64(enumValues.GetValue(i)) for custom enums
+				if ((value & flagValue) != 0)
+				{
+					if (!first) sb.Append(", ");
+					sb.Append(enumValues.GetValue(i).ToString());
+					first = false;
 				}
 			}
+			if (sb.Length == 0) return "(None)";
+			return sb.ToString();
+		}
 
-			var newSelectedValue = EditorGUI.MaskField(position, label, selectedValue, labels);
-
-			valueProperty.intValue = newSelectedValue;
-
-			EditorGUI.EndProperty();
+		public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+		{
+			return EditorGUIUtility.singleLineHeight;
 		}
 	}
 }
