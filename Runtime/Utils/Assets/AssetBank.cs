@@ -167,6 +167,14 @@ namespace BlueCheese.Core.Utils
 
 		public static void Refresh()
 		{
+#if UNITY_EDITOR
+			float lastGenTime = UnityEditor.EditorPrefs.GetFloat("AssetBankLastGenTime", 0);
+			if (Time.realtimeSinceStartup - lastGenTime < 1)
+			{
+				return;
+			}
+			UnityEditor.EditorPrefs.SetFloat("AssetBankLastGenTime", Time.realtimeSinceStartup);
+#endif
 			var bank = Resources.Load<AssetBank>("AssetBank");
 			if (bank != null)
 			{

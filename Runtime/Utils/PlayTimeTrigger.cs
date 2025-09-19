@@ -1,5 +1,5 @@
-﻿//
-// Copyright (c) 2024 BlueCheese Games All rights reserved
+//
+// Copyright (c) 2025 BlueCheese Games All rights reserved
 //
 
 using Cysharp.Threading.Tasks;

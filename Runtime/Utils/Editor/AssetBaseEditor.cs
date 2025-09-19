@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2024 BlueCheese Games All rights reserved
+// Copyright (c) 2025 BlueCheese Games All rights reserved
 //
 
 using UnityEditor;
@@ -16,6 +16,8 @@ namespace BlueCheese.Core.Utils.Editor
 		private SerializedProperty _tagsProperty;
 		private SerializedProperty _registerProperty;
 
+		private AssetBase _asset => target as AssetBase;
+
 		private void OnEnable()
 		{
 			_nameProperty = serializedObject.FindProperty("Name");
@@ -23,12 +25,12 @@ namespace BlueCheese.Core.Utils.Editor
 			_registerProperty = serializedObject.FindProperty("RegisterInAssetBank");
 		}
 
-		public override void OnInspectorGUI()
+		protected override void OnHeaderGUI()
 		{
 			serializedObject.Update();
 
 			EditorGUILayout.BeginVertical("box");
-			_foldout = EditorGUILayout.BeginFoldoutHeaderGroup(_foldout, "Asset Bank");
+			_foldout = EditorGUILayout.BeginFoldoutHeaderGroup(_foldout, $"Asset #{_asset.Id}");
 			EditorGUILayout.EndFoldoutHeaderGroup();
 			if (_foldout)
 			{

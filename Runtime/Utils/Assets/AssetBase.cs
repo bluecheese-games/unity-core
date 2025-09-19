@@ -1,5 +1,5 @@
-﻿//
-// Copyright (c) 2024 BlueCheese Games All rights reserved
+//
+// Copyright (c) 2025 BlueCheese Games All rights reserved
 //
 
 using UnityEngine;
@@ -8,9 +8,9 @@ namespace BlueCheese.Core.Utils
 {
 	public class AssetBase : ScriptableObject
 	{
-		public string Name = string.Empty;
-		public Tags Tags = new();
-		public bool RegisterInAssetBank = true;
+		[HideInInspector] public string Name = string.Empty;
+		[HideInInspector] public Tags Tags = new();
+		[HideInInspector] public bool RegisterInAssetBank = true;
 
 		public int Id => GetInstanceID();
 
