@@ -13,67 +13,67 @@ namespace BlueCheese.Core.Utils
 	public struct FlagEnum<T> where T : Enum
 	{
 		[SerializeField]
-		private long _value;
+		private long _bitValue;
 
 		private long _lastToStringValue;
 		private string _stringValue;
 
-		public FlagEnum(long value)
+		public FlagEnum(long bitValue)
 		{
-			_value = value;
+			_bitValue = bitValue;
 			_lastToStringValue = 0;
 			_stringValue = string.Empty;
 		}
 
-		public FlagEnum(params T[] values)
+		public FlagEnum(params T[] flags)
 		{
-			_value = 0;
+			_bitValue = 0;
 			_lastToStringValue = 0;
 			_stringValue = string.Empty;
-			foreach (var value in values)
+			foreach (var flag in flags)
 			{
-				AddFlag(value);
+				AddFlag(flag);
 			}
 		}
 
-		public readonly bool HasFlag(T flag) => (_value & (GetFlagValue(flag))) != 0;
+		public readonly bool HasFlag(T flag) => (_bitValue & (GetFlagValue(flag))) != 0;
 
-		public void AddFlag(T flag) => _value |= GetFlagValue(flag);
+		public void AddFlag(T flag) => _bitValue |= GetFlagValue(flag);
 
-		public void RemoveFlag(T flag) => _value &= ~(GetFlagValue(flag));
+		public void RemoveFlag(T flag) => _bitValue &= ~(GetFlagValue(flag));
 
-		public static implicit operator FlagEnum<T>(T value) => new(GetFlagValue(value));
+		public static implicit operator FlagEnum<T>(T flag) => new(GetFlagValue(flag));
 
-		public static FlagEnum<T> operator |(FlagEnum<T> a, FlagEnum<T> b) => new(a._value | b._value);
+		public static FlagEnum<T> operator |(FlagEnum<T> a, FlagEnum<T> b) => new(a._bitValue | b._bitValue);
 
-		public static FlagEnum<T> operator |(FlagEnum<T> a, T b) => new(a._value | GetFlagValue(b));
+		public static FlagEnum<T> operator |(FlagEnum<T> a, T b) => new(a._bitValue | GetFlagValue(b));
 
-		public static FlagEnum<T> operator |(T a, FlagEnum<T> b) => new(GetFlagValue(a) | b._value);
+		public static FlagEnum<T> operator |(T a, FlagEnum<T> b) => new(GetFlagValue(a) | b._bitValue);
 
-		public static FlagEnum<T> operator &(FlagEnum<T> a, FlagEnum<T> b) => new(a._value & b._value);
+		public static FlagEnum<T> operator &(FlagEnum<T> a, FlagEnum<T> b) => new(a._bitValue & b._bitValue);
 
-		public static FlagEnum<T> operator &(FlagEnum<T> a, T b) => new(a._value & GetFlagValue(b));
+		public static FlagEnum<T> operator &(FlagEnum<T> a, T b) => new(a._bitValue & GetFlagValue(b));
 
-		public static FlagEnum<T> operator &(T a, FlagEnum<T> b) => new(GetFlagValue(a) & b._value);
+		public static FlagEnum<T> operator &(T a, FlagEnum<T> b) => new(GetFlagValue(a) & b._bitValue);
 
-		public static FlagEnum<T> operator ^(FlagEnum<T> a, FlagEnum<T> b) => new(a._value ^ b._value);
+		public static FlagEnum<T> operator ^(FlagEnum<T> a, FlagEnum<T> b) => new(a._bitValue ^ b._bitValue);
 
-		public static FlagEnum<T> operator ~(FlagEnum<T> a) => new(~a._value);
+		public static FlagEnum<T> operator ~(FlagEnum<T> a) => new(~a._bitValue);
 
-		public static bool operator ==(FlagEnum<T> a, FlagEnum<T> b) => a._value == b._value;
-		public static bool operator !=(FlagEnum<T> a, FlagEnum<T> b) => a._value != b._value;
+		public static bool operator ==(FlagEnum<T> a, FlagEnum<T> b) => a._bitValue == b._bitValue;
+		public static bool operator !=(FlagEnum<T> a, FlagEnum<T> b) => a._bitValue != b._bitValue;
 
-		public override readonly bool Equals(object obj) => obj is FlagEnum<T> other && _value == other._value;
+		public override readonly bool Equals(object obj) => obj is FlagEnum<T> other && _bitValue == other._bitValue;
 
-		public override readonly int GetHashCode() => _value.GetHashCode();
+		public override readonly int GetHashCode() => _bitValue.GetHashCode();
 
-		public readonly bool IsEmpty => _value == 0;
+		public readonly bool IsEmpty => _bitValue == 0;
 
 		public readonly int Count
 		{
 			get
 			{
-				long v = _value;
+				long v = _bitValue;
 				int count = 0;
 				while (v != 0)
 				{
@@ -99,13 +99,13 @@ namespace BlueCheese.Core.Utils
 				return "None";
 			}
 
-			if (_lastToStringValue == _value)
+			if (_lastToStringValue == _bitValue)
 			{
 				// Returns the cached value
 				return _stringValue;
 			}
 
-			_lastToStringValue = _value;
+			_lastToStringValue = _bitValue;
 			_stringValue = string.Join(", ", Enum.GetValues(typeof(T))
 				.Cast<T>()
 				.Where(HasFlag)
@@ -116,7 +116,7 @@ namespace BlueCheese.Core.Utils
 
 		public readonly string ToBinaryString(bool includeLeadingZeros = false)
 		{
-			string result = Convert.ToString(_value, 2);
+			string result = Convert.ToString(_bitValue, 2);
 			if (!includeLeadingZeros)
 			{
 				return result;
