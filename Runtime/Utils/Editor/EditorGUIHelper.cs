@@ -39,6 +39,7 @@ namespace BlueCheese.Core.Utils.Editor
 		// Styles
 		private static bool _initialized = false;
 		private static GUIStyle _textFieldWithIconStyle;
+		private static GUIStyle _titleStyle;
 
 		private static void InitStyles()
 		{
@@ -52,6 +53,13 @@ namespace BlueCheese.Core.Utils.Editor
 			{
 				normal = { background = null }, // Clear any background for the icon
 				padding = new RectOffset(25, 5, 2, 2), // Add padding to make room for the icon
+			};
+
+			_titleStyle = new GUIStyle(EditorStyles.helpBox)
+			{
+				alignment = TextAnchor.MiddleCenter,
+				fontSize = 18,
+				fontStyle = FontStyle.Bold
 			};
 
 			_initialized = true;
@@ -96,6 +104,15 @@ namespace BlueCheese.Core.Utils.Editor
 			{
 				SearchKeyWindow.Open(keyProperty, keys, propRect, maxItems);
 			}
+			EditorGUILayout.EndHorizontal();
+		}
+
+		public static void DrawTitle(string title)
+		{
+			InitStyles();
+
+			EditorGUILayout.BeginHorizontal();
+			EditorGUILayout.LabelField(title, _titleStyle);
 			EditorGUILayout.EndHorizontal();
 		}
 	}

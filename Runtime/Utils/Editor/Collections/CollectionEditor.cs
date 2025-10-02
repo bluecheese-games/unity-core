@@ -3,11 +3,10 @@
 //
 
 using UnityEditor;
-using UnityEngine;
 
 namespace BlueCheese.Core.Utils.Editor
 {
-	[CustomEditor(typeof(Collection<>))]
+	[CustomEditor(typeof(Collection<>), editorForChildClasses: true)]
 	public class CollectionEditor : AssetBaseEditor
 	{
 		public override void OnInspectorGUI()

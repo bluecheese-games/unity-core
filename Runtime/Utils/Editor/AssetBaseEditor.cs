@@ -18,7 +18,7 @@ namespace BlueCheese.Core.Utils.Editor
 
 		private AssetBase _asset => target as AssetBase;
 
-		private void OnEnable()
+		virtual protected void OnEnable()
 		{
 			_nameProperty = serializedObject.FindProperty("Name");
 			_tagsProperty = serializedObject.FindProperty("Tags");
