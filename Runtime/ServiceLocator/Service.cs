@@ -164,7 +164,7 @@ namespace BlueCheese.Core.ServiceLocator
                 }
                 catch (Exception e)
                 {
-                    throw new Exception($"Unable to instanciate service: {instanceType}", e);
+                    throw new Exception($"Unable to instantiate service: {instanceType}", e);
                 }
             }
 

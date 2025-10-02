@@ -21,7 +21,7 @@ namespace BlueCheese.Core.Utils
 			{
 				Name = name;
 			}
-			AssetBank.Refresh();
+			AssetBankGenerator.Regenerate();
 		}
 
 		public virtual void OnRegister() { }

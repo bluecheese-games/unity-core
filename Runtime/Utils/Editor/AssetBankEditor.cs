@@ -10,8 +10,6 @@ namespace BlueCheese.Core.Utils.Editor
 	[CustomEditor(typeof(AssetBank))]
 	public class AssetBankEditor : UnityEditor.Editor
 	{
-		private AssetBank _bank => target as AssetBank;
-
 		private SerializedProperty _assetsProperty;
 
 		private void OnEnable()
@@ -24,7 +22,7 @@ namespace BlueCheese.Core.Utils.Editor
 			serializedObject.Update();
 			if (GUILayout.Button("Regenerate"))
 			{
-				_bank.Regenerate();
+				AssetBankGenerator.Regenerate();
 				return;
 			}
 

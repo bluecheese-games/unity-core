@@ -64,6 +64,16 @@ namespace BlueCheese.Core.Utils
 			return null;
 		}
 
+		static public T GetAssetByType<T>() where T : AssetBase
+		{
+			Type t = typeof(T);
+			if (Instance._assetsByType.TryGetValue(typeof(T), out var baseAsset) && baseAsset.FirstOrDefault() is T asset)
+			{
+				return asset;
+			}
+			return null;
+		}
+
 		static public bool TryGetAssetById<T>(int id, out T asset) where T : AssetBase
 		{
 			if (Instance._assetsById.TryGetValue(id, out var baseAsset) && baseAsset is T tAsset)
@@ -117,7 +127,6 @@ namespace BlueCheese.Core.Utils
 					{
 						_instance._assetsByTags[asset.Tags[i]] = new();
 					}
-
 					_instance._assetsByTags[asset.Tags[i]].Add(asset);
 				}
 
@@ -125,60 +134,18 @@ namespace BlueCheese.Core.Utils
 				{
 					_instance._assetsByType[asset.GetType()] = new();
 				}
+				_instance._assetsByType[asset.GetType()].Add(asset);
 			}
 		}
 
 #if UNITY_EDITOR
-		class AssetBankAssetPostprocessor : UnityEditor.AssetPostprocessor
+		public void Feed(IEnumerable<AssetBase> assets)
 		{
-			private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)
-			{
-				var bank = Resources.Load<AssetBank>("AssetBank");
-				if (bank != null)
-				{
-					bank.Regenerate();
-				}
-			}
-		}
-
-		public void Regenerate()
-		{
-			if (Application.isPlaying)
-			{
-				return;
-			}
-
-			var sw = System.Diagnostics.Stopwatch.StartNew();
-			_assets.Clear();
-
-			_assets.AddRange(UnityEditor.AssetDatabase.FindAssets($"t:{nameof(AssetBase)}")
-				.Select(UnityEditor.AssetDatabase.GUIDToAssetPath)
-				.Select(UnityEditor.AssetDatabase.LoadAssetAtPath<AssetBase>)
-				.Where(asset => asset.RegisterInAssetBank)
-				.OrderBy(asset => asset.Name));
+			_assets = assets.ToList();
 
 			foreach (var asset in _assets)
 			{
 				asset.OnRegister();
-			}
-
-			Debug.Log($"Regenerated AssetBank in {sw.ElapsedMilliseconds}ms");
-		}
-
-		public static void Refresh()
-		{
-#if UNITY_EDITOR
-			float lastGenTime = UnityEditor.EditorPrefs.GetFloat("AssetBankLastGenTime", 0);
-			if (Time.realtimeSinceStartup - lastGenTime < 1)
-			{
-				return;
-			}
-			UnityEditor.EditorPrefs.SetFloat("AssetBankLastGenTime", Time.realtimeSinceStartup);
-#endif
-			var bank = Resources.Load<AssetBank>("AssetBank");
-			if (bank != null)
-			{
-				bank.Regenerate();
 			}
 		}
 #endif
