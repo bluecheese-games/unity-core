@@ -2,10 +2,10 @@
 // Copyright (c) 2025 BlueCheese Games All rights reserved
 //
 
+using BlueCheese.Core.Utils.Editor;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.VersionControl;
 using UnityEngine;
 
 namespace BlueCheese.Core.Utils
@@ -49,6 +49,8 @@ namespace BlueCheese.Core.Utils
 			var assets = FindAssets();
 			bank.Feed(assets);
 			Debug.Log($"Regenerated AssetBank in {sw.ElapsedMilliseconds}ms");
+
+			DevMetricRecorder.Record("AssetBank Regen", sw.Elapsed.TotalSeconds);
 		}
 
 		public static IEnumerable<AssetBase> FindAssets() =>

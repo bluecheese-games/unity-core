@@ -21,6 +21,7 @@ namespace BlueCheese.Core.Utils.Editor
 		public static Texture2D Restart => GetTexture("Refresh");
 		public static Texture2D Warning => GetTexture("d_console.warnicon.sml");
 		public static Texture2D Skybox => GetTexture("d_ReflectionProbe Icon");
+		public static Texture2D Menu => GetTexture("d__Menu");
 
 		private static Dictionary<string, Texture2D> _icons = new Dictionary<string, Texture2D>();
 
