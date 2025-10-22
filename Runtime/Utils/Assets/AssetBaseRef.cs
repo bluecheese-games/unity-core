@@ -11,13 +11,13 @@ namespace BlueCheese.Core.Utils
 	public class AssetBaseRef
 	{
 		public string Name;
-		public string Path; // Path relative to Resources folder when using Resources load mode or Addressable address when using Addressables
 		public string Guid;
 		public string TypeName;
 		public Tags Tags;
 		public AssetLoadMode Mode = AssetLoadMode.Resources;
 
 		private Type _type;
+		private AssetBase _loadedAsset;
 
 		public Type Type
 		{
@@ -38,7 +38,6 @@ namespace BlueCheese.Core.Utils
 			return new AssetBaseRef
 			{
 				Name = asset.Name,
-				Path = "", // TODO: Implement path extraction based on load mode
 				Guid = asset.Guid,
 				TypeName = asset.TypeName,
 				Tags = asset.Tags,
@@ -49,6 +48,12 @@ namespace BlueCheese.Core.Utils
 
 		public bool TryLoad<T>(out T asset) where T : AssetBase
 		{
+			if (_loadedAsset is T cachedAsset)
+			{
+				asset = cachedAsset;
+				return true;
+			}
+
 			asset = null;
 #if UNITY_EDITOR
 			// In the editor, always load via AssetDatabase for performance and correctness
@@ -63,7 +68,7 @@ namespace BlueCheese.Core.Utils
 			switch (Mode)
 			{
 				case AssetLoadMode.Resources:
-					var fullPath = System.IO.Path.Combine(AssetBank.ResourcesPath, Path);
+					var fullPath = $"{AssetBank.AssetsResourcePath}/{Guid}";
 					asset = Resources.Load<T>(fullPath);
 					break;
 				case AssetLoadMode.Addressables:
@@ -71,6 +76,9 @@ namespace BlueCheese.Core.Utils
 					asset = null;
 					break;
 			}
+
+			_loadedAsset = asset;
+
 			return asset != null;
 		}
 	}

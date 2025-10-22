@@ -11,12 +11,17 @@ namespace BlueCheese.Core.Utils
 	{
         public string Guid;
 
-		public readonly T Asset
+		private T _loadedAsset;
+
+		public T Asset
 		{
 			get
 			{
-				AssetBank.TryGetAssetByGuid<T>(Guid, out var asset);
-				return asset;
+				if (_loadedAsset == null)
+				{
+					AssetBank.TryLoadAssetByGuid(Guid, out _loadedAsset);
+				}
+				return _loadedAsset;
 			}
 		}
 

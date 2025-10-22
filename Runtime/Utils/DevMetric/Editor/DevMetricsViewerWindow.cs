@@ -21,7 +21,7 @@ namespace BlueCheese.Core.Utils.Editor
 		private class Dataset
 		{
 			public DevMetricDataAsset asset;
-			public string label;   // e.g. "Project (User)"
+			public string label;
 			public bool visible = true;
 			public Color color;
 			public string assetPath;
@@ -29,26 +29,23 @@ namespace BlueCheese.Core.Utils.Editor
 		}
 
 		private class AggPoint { public DateTime bucketStart; public double sum; public int count; public double avgSeconds; }
-		private class Series
-		{
-			public List<AggPoint> points = new List<AggPoint>(); // sorted ascending by bucketStart
-			public Color color;
-			public string label;
-		}
+		private class Series { public List<AggPoint> points = new List<AggPoint>(); public Color color; public string label; }
 
 		private const string LocalAssetPath = "Assets/_Local/DevMetricData.asset";
-		private const string MenuPath = "Window/Dev Metrics Viewer";
+		private const string MenuPath = "Window/Dev Metric Viewer";
+		private const string PrefKeyWhitelist = "DevMetricViewer_MetricWhitelist_v1"; // EditorPrefs key
+
 		private static readonly Color[] kPalette = new[]
 		{
-			new Color(0.33f, 0.73f, 0.98f),
-			new Color(0.94f, 0.76f, 0.20f),
-			new Color(0.98f, 0.41f, 0.35f),
-			new Color(0.48f, 0.80f, 0.65f),
-			new Color(0.78f, 0.57f, 0.96f),
-			new Color(0.99f, 0.59f, 0.07f),
-			new Color(0.57f, 0.64f, 0.69f),
-			new Color(0.36f, 0.84f, 0.85f),
-		};
+		new Color(0.33f, 0.73f, 0.98f),
+		new Color(0.94f, 0.76f, 0.20f),
+		new Color(0.98f, 0.41f, 0.35f),
+		new Color(0.48f, 0.80f, 0.65f),
+		new Color(0.78f, 0.57f, 0.96f),
+		new Color(0.99f, 0.59f, 0.07f),
+		new Color(0.57f, 0.64f, 0.69f),
+		new Color(0.36f, 0.84f, 0.85f),
+	};
 
 		private readonly List<Dataset> _datasets = new List<Dataset>();
 		private Vector2 _scroll;
@@ -62,36 +59,38 @@ namespace BlueCheese.Core.Utils.Editor
 		// timeframe selector
 		private Timeframe _timeframe = Timeframe.Daily;
 
+		// metric whitelist (raw keys). Empty/null => show all
+		private HashSet<string> _metricWhitelist;
+
 		// Object picker control ID
 		private int _pickerControlID = -1;
 
 		// Y headroom ratio (10% by default)
 		private const double Y_HEADROOM = 0.10;
 
-		// Add to DevMetricWindow.cs (inside the class)
-		public static void OpenAndShow(DevMetricDataAsset asset)
-		{
-			var w = GetWindow<DevMetricsViewerWindow>(utility: false, title: "Dev Metrics Viewer");
-			w.minSize = new Vector2(700, 400);
-			w.Focus();
-
-			if (asset != null)
-			{
-				// Add (no-dup), refresh tabs, and repaint
-				w.AddDataset(asset, isLocal: false);
-				w.RefreshMetricTabs();
-				w.Repaint();
-			}
-		}
-
 		[MenuItem(MenuPath)]
 		public static void Open()
 		{
-			var w = GetWindow<DevMetricsViewerWindow>(utility: false, title: "Dev Metrics Viewer");
+			var w = GetWindow<DevMetricsViewerWindow>(utility: false, title: "DevMetric");
 			w.minSize = new Vector2(700, 400);
 			w.Focus();
+			w.LoadPrefs();
 			w.LoadDefaultLocal();
 		}
+
+		public static void OpenAndShow(DevMetricDataAsset asset)
+		{
+			var w = GetWindow<DevMetricsViewerWindow>(utility: false, title: "DevMetric");
+			w.minSize = new Vector2(700, 400);
+			w.Focus();
+			w.LoadPrefs();
+			if (asset != null) { w.AddDataset(asset, isLocal: false); }
+			w.RefreshMetricTabs();
+			w.Repaint();
+		}
+
+		private void LoadPrefs() => _metricWhitelist = LoadWhitelistFromPrefs();
+		private void SavePrefs() => SaveWhitelistToPrefs(_metricWhitelist);
 
 		private void LoadDefaultLocal()
 		{
@@ -147,7 +146,6 @@ namespace BlueCheese.Core.Utils.Editor
 				}
 
 				GraphUI(currentMetricRaw);
-				// Legend removed
 			}
 		}
 
@@ -188,8 +186,14 @@ namespace BlueCheese.Core.Utils.Editor
 
 			GUILayout.FlexibleSpace();
 
+			// ▼ Metrics checkable dropdown
+			if (EditorGUILayout.DropdownButton(new GUIContent("Metrics"), FocusType.Passive, EditorStyles.toolbarDropDown))
+			{
+				ShowMetricsDropdown();
+			}
+
 			// Timeframe selector
-			GUILayout.Label("Timeframe", EditorStyles.toolbarButton, GUILayout.Width(70));
+			GUILayout.Label("Timeframe", EditorStyles.label, GUILayout.Width(70));
 			_timeframe = (Timeframe)EditorGUILayout.EnumPopup(_timeframe, GUILayout.Width(110));
 
 			// Search (matches nice or raw)
@@ -210,6 +214,75 @@ namespace BlueCheese.Core.Utils.Editor
 				}
 				_pickerControlID = -1;
 			}
+		}
+
+		// === Metrics Dropdown ===
+
+		private void ShowMetricsDropdown()
+		{
+			var menu = new GenericMenu();
+			BuildMetricsMenu(menu);
+			menu.DropDown(new Rect(Event.current.mousePosition, Vector2.zero));
+		}
+
+		private void BuildMetricsMenu(GenericMenu menu)
+		{
+			var allRaw = GetAllMetricKeysSorted(); // sorted raw keys
+												   // Build map from raw->nice and also a nice-sorted list
+			var items = allRaw
+				.Select(r => (raw: r, nice: GetNiceName(r)))
+				.OrderBy(t => t.nice, StringComparer.CurrentCultureIgnoreCase)
+				.ToList();
+
+			bool hasWhitelist = _metricWhitelist != null && _metricWhitelist.Count > 0;
+
+			// Header actions
+			menu.AddItem(new GUIContent("Select All"), false, () => SelectAllMetrics(allRaw));
+			menu.AddSeparator("");
+
+			// Checkable items
+			foreach (var it in items)
+			{
+				bool on = hasWhitelist ? _metricWhitelist.Contains(it.raw) : true; // empty whitelist => show all => checked
+				var content = new GUIContent($"{it.nice}", it.raw); // raw in tooltip
+				menu.AddItem(content, on, () => ToggleMetric(it.raw));
+			}
+		}
+
+		private void ToggleMetric(string raw)
+		{
+			_metricWhitelist ??= new HashSet<string>(StringComparer.Ordinal);
+
+			// If currently "show all" (empty whitelist), initialize whitelist to "all" then toggle raw off
+			if (_metricWhitelist.Count == 0)
+			{
+				foreach (var k in GetAllMetricKeysSorted())
+					_metricWhitelist.Add(k);
+			}
+
+			if (_metricWhitelist.Contains(raw)) _metricWhitelist.Remove(raw);
+			else _metricWhitelist.Add(raw);
+
+			SavePrefs();
+			RefreshMetricTabs();
+			Repaint();
+		}
+
+		private void SelectAllMetrics(List<string> allRaw)
+		{
+			_metricWhitelist = new HashSet<string>(allRaw, StringComparer.Ordinal);
+			SavePrefs();
+			RefreshMetricTabs();
+			Repaint();
+		}
+
+		private void ClearSelectionShowAll()
+		{
+			// Empty whitelist means "show everything"
+			_metricWhitelist = new HashSet<string>(StringComparer.Ordinal);
+			SavePrefs();
+			RefreshMetricTabs();
+			Repaint();
 		}
 
 		private void DataSourcesUI()
@@ -359,7 +432,6 @@ namespace BlueCheese.Core.Utils.Editor
 			DrawXAxisLabels(rect, plot, buckets);
 			Handles.EndGUI();
 
-			// Draw each curve with carry-forward for gaps
 			foreach (var s in series)
 				DrawCurveCarryForward(plot, buckets, s.points, s.color, minY, maxY);
 
@@ -367,7 +439,6 @@ namespace BlueCheese.Core.Utils.Editor
 			EditorGUI.LabelField(new Rect(plot.x, rect.y + 2, plot.width, 18),
 				$"Metric: {nice}  (avg seconds/{_timeframe})", EditorStyles.boldLabel);
 
-			// Hover tooltip
 			HoverUI(plot, buckets, series, minY, maxY);
 		}
 
@@ -666,6 +737,10 @@ namespace BlueCheese.Core.Utils.Editor
 			var raw = rawSet.ToList();
 			raw.Sort(StringComparer.Ordinal);
 
+			// Apply whitelist (if any)
+			if (_metricWhitelist != null && _metricWhitelist.Count > 0)
+				raw = raw.Where(r => _metricWhitelist.Contains(r)).ToList();
+
 			// Build nice names; ensure uniqueness
 			var nice = new string[raw.Count];
 			var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -682,6 +757,56 @@ namespace BlueCheese.Core.Utils.Editor
 			_metricTabsNice = nice;
 
 			_metricTabIndex = Mathf.Clamp(_metricTabIndex, 0, Math.Max(0, _metricTabsRaw.Length - 1));
+		}
+
+		// ---------- Metric whitelist prefs ----------
+
+		private static HashSet<string> LoadWhitelistFromPrefs()
+		{
+			var s = EditorPrefs.GetString(PrefKeyWhitelist, string.Empty);
+			if (string.IsNullOrEmpty(s)) return new HashSet<string>(StringComparer.Ordinal);
+			var parts = s.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
+			return new HashSet<string>(parts, StringComparer.Ordinal);
+		}
+
+		private static void SaveWhitelistToPrefs(HashSet<string> set)
+		{
+			if (set == null || set.Count == 0)
+			{
+				EditorPrefs.SetString(PrefKeyWhitelist, string.Empty);
+				return;
+			}
+			var joined = string.Join("|", set);
+			EditorPrefs.SetString(PrefKeyWhitelist, joined);
+		}
+
+		private List<string> GetAllMetricKeysSorted()
+		{
+			var all = new HashSet<string>();
+			foreach (var ds in _datasets)
+			{
+				if (ds.asset == null) continue;
+				var daysField = typeof(DevMetricDataAsset).GetField("days", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+				var days = daysField.GetValue(ds.asset) as System.Collections.IList;
+				if (days == null) continue;
+
+				foreach (var dObj in days)
+				{
+					var dType = dObj.GetType();
+					var metricsList = dType.GetField("metrics").GetValue(dObj) as System.Collections.IList;
+					if (metricsList == null) continue;
+
+					foreach (var mObj in metricsList)
+					{
+						var mType = mObj.GetType();
+						string name = (string)mType.GetField("name").GetValue(mObj);
+						if (!string.IsNullOrEmpty(name)) all.Add(name);
+					}
+				}
+			}
+			var list = all.ToList();
+			list.Sort(StringComparer.Ordinal);
+			return list;
 		}
 
 		// ---------- Nice name formatting ----------
@@ -701,7 +826,7 @@ namespace BlueCheese.Core.Utils.Editor
 			if (kNiceOverrides.TryGetValue(rawKey, out var nice))
 				return nice;
 
-			string key = rawKey.EndsWith("_s", StringComparison.Ordinal) ? rawKey.Substring(0, rawKey.Length - 2) : rawKey;
+			string key = rawKey.EndsWith("_s", StringComparison.Ordinal) ? rawKey[..^2] : rawKey;
 			key = key.Replace('_', ' ');
 
 			string[] words = key.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -726,7 +851,7 @@ namespace BlueCheese.Core.Utils.Editor
 			{
 				var p = parts[i];
 				if (kAcronyms.Contains(p)) parts[i] = p.ToUpperInvariant();
-				else parts[i] = char.ToUpperInvariant(p[0]) + (p.Length > 1 ? p.Substring(1).ToLowerInvariant() : "");
+				else parts[i] = char.ToUpperInvariant(p[0]) + (p.Length > 1 ? p[1..].ToLowerInvariant() : "");
 			}
 			return string.Join(" ", parts);
 		}
@@ -738,13 +863,11 @@ namespace BlueCheese.Core.Utils.Editor
 
 			int start = 0;
 			for (int i = 1; i < s.Length; i++)
-			{
 				if (char.IsUpper(s[i]) && !char.IsUpper(s[i - 1]))
 				{
 					list.Add(s.Substring(start, i - start));
 					start = i;
 				}
-			}
 			list.Add(s.Substring(start));
 			return list;
 		}

@@ -12,7 +12,8 @@ namespace BlueCheese.Core.Utils
 	[CreateAssetMenu(menuName = "AssetBank", fileName = "AssetBank")]
 	public class AssetBank : ScriptableObject
 	{
-		public const string ResourcesPath = "AssetBank";
+		public const string AssetBankResourcePath = "AssetBank";
+		public const string AssetsResourcePath = "_Assets";
 
 		private static AssetBank _instance;
 
@@ -44,7 +45,7 @@ namespace BlueCheese.Core.Utils
 
 		static public IEnumerable<AssetBaseRef> GetAllAssets() => Instance._assets;
 
-		static public bool TryGetAssetByGuid<T>(string guid, out T asset) where T : AssetBase
+		static public bool TryLoadAssetByGuid<T>(string guid, out T asset) where T : AssetBase
 		{
 			if (Instance._assetsByGuid.TryGetValue(guid, out var assetBaseRef) &&
 				assetBaseRef.TryLoad(out asset))
@@ -73,13 +74,18 @@ namespace BlueCheese.Core.Utils
 
 		static public void Initialize()
 		{
-			_instance = Resources.Load<AssetBank>("AssetBank");
+			_instance = Resources.Load<AssetBank>(AssetBankResourcePath);
 			if (_instance == null)
 			{
 				Debug.LogWarning("AssetBank not found in Resources, creating an empty one");
 				_instance = CreateInstance<AssetBank>();
 				return;
 			}
+
+			_instance._assetsByName.Clear();
+			_instance._assetsByGuid.Clear();
+			_instance._assetsByTags.Clear();
+			_instance._assetsByType.Clear();
 
 			foreach (var asset in _instance._assets)
 			{
@@ -117,6 +123,11 @@ namespace BlueCheese.Core.Utils
 		static public void SelectInProject()
 		{
 			UnityEditor.Selection.activeObject = Instance;
+		}
+
+		static public string GetPath()
+		{
+			return UnityEditor.AssetDatabase.GetAssetPath(Instance);
 		}
 #endif
 	}
