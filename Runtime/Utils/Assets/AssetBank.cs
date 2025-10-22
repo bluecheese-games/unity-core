@@ -12,14 +12,22 @@ namespace BlueCheese.Core.Utils
 	[CreateAssetMenu(menuName = "AssetBank", fileName = "AssetBank")]
 	public class AssetBank : ScriptableObject
 	{
+		public const string ResourcesPath = "AssetBank";
+
 		private static AssetBank _instance;
 
-		[SerializeField] private List<AssetBase> _assets;
+		[SerializeField] private List<AssetBaseRef> _assets;
 
-		private readonly Dictionary<string, AssetBase> _assetsByName = new();
-		private readonly Dictionary<int, AssetBase> _assetsById = new();
-		private readonly Dictionary<string, List<AssetBase>> _assetsByTags = new();
-		private readonly Dictionary<Type, List<AssetBase>> _assetsByType = new();
+		private readonly Dictionary<string, AssetBaseRef> _assetsByName = new();
+		private readonly Dictionary<string, AssetBaseRef> _assetsByGuid = new();
+		private readonly Dictionary<string, List<AssetBaseRef>> _assetsByTags = new();
+		private readonly Dictionary<Type, List<AssetBaseRef>> _assetsByType = new();
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ReloadDomain()
+		{
+			_instance = null;
+		}
 
 		private static AssetBank Instance
 		{
@@ -34,76 +42,33 @@ namespace BlueCheese.Core.Utils
 			}
 		}
 
-		static public T GetAssetByName<T>(string name) where T : AssetBase
-		{
-			if (Instance._assetsByName.TryGetValue(name, out var baseAsset) && baseAsset is T asset)
-			{
-				return asset;
-			}
-			return null;
-		}
+		static public IEnumerable<AssetBaseRef> GetAllAssets() => Instance._assets;
 
-		static public bool TryGetAssetByName<T>(string name, out T asset) where T : AssetBase
+		static public bool TryGetAssetByGuid<T>(string guid, out T asset) where T : AssetBase
 		{
-			if (Instance._assetsByName.TryGetValue(name, out var baseAsset) && baseAsset is T tAsset)
+			if (Instance._assetsByGuid.TryGetValue(guid, out var assetBaseRef) &&
+				assetBaseRef.TryLoad(out asset))
 			{
-				asset = tAsset;
-				return true;
+				return asset != null;
 			}
 
 			asset = null;
 			return false;
-		}
-
-		static public T GetAssetById<T>(int id) where T : AssetBase
-		{
-			if (Instance._assetsById.TryGetValue(id, out var baseAsset) && baseAsset is T asset)
-			{
-				return asset;
-			}
-			return null;
-		}
-
-		static public T GetAssetByType<T>() where T : AssetBase
-		{
-			Type t = typeof(T);
-			if (Instance._assetsByType.TryGetValue(typeof(T), out var baseAsset) && baseAsset.FirstOrDefault() is T asset)
-			{
-				return asset;
-			}
-			return null;
-		}
-
-		static public bool TryGetAssetById<T>(int id, out T asset) where T : AssetBase
-		{
-			if (Instance._assetsById.TryGetValue(id, out var baseAsset) && baseAsset is T tAsset)
-			{
-				asset = tAsset;
-				return true;
-			}
-
-			asset = null;
-			return false;
-		}
-
-		static public IEnumerable<T> GetAssetsByTag<T>(string tag) where T : AssetBase
-		{
-			if (Instance._assetsByTags.TryGetValue(tag, out var assets))
-			{
-				return assets.OfType<T>();
-			}
-
-			return Enumerable.Empty<T>();
 		}
 
 		static public IEnumerable<T> GetAssetsByType<T>() where T : AssetBase
 		{
-			if (Instance._assetsByType.TryGetValue(typeof(T), out var assets))
+			var type = typeof(T);
+			if (Instance._assetsByType.TryGetValue(type, out var assetRefs))
 			{
-				return assets.OfType<T>();
+				foreach (var assetRef in assetRefs)
+				{
+					if (assetRef.TryLoad(out T asset))
+					{
+						yield return asset;
+					}
+				}
 			}
-
-			return Enumerable.Empty<T>();
 		}
 
 		static public void Initialize()
@@ -119,7 +84,7 @@ namespace BlueCheese.Core.Utils
 			foreach (var asset in _instance._assets)
 			{
 				_instance._assetsByName[asset.Name] = asset;
-				_instance._assetsById[asset.Id] = asset;
+				_instance._assetsByGuid[asset.Guid] = asset;
 
 				for (int i = 0; i < asset.Tags.Length; i++)
 				{
@@ -130,23 +95,28 @@ namespace BlueCheese.Core.Utils
 					_instance._assetsByTags[asset.Tags[i]].Add(asset);
 				}
 
-				if (!_instance._assetsByType.ContainsKey(asset.GetType()))
+				if (!_instance._assetsByType.ContainsKey(asset.Type))
 				{
-					_instance._assetsByType[asset.GetType()] = new();
+					_instance._assetsByType[asset.Type] = new();
 				}
-				_instance._assetsByType[asset.GetType()].Add(asset);
+				_instance._assetsByType[asset.Type].Add(asset);
 			}
 		}
 
 #if UNITY_EDITOR
 		public void Feed(IEnumerable<AssetBase> assets)
 		{
-			_assets = assets.ToList();
+			_assets = assets.Select(AssetBaseRef.FromAsset).ToList();
 
-			foreach (var asset in _assets)
+			foreach (var asset in assets)
 			{
 				asset.OnRegister();
 			}
+		}
+
+		static public void SelectInProject()
+		{
+			UnityEditor.Selection.activeObject = Instance;
 		}
 #endif
 	}

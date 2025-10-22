@@ -3,6 +3,7 @@
 //
 
 using UnityEditor;
+using UnityEngine;
 
 namespace BlueCheese.Core.Utils.Editor
 {
@@ -20,9 +21,9 @@ namespace BlueCheese.Core.Utils.Editor
 
 		virtual protected void OnEnable()
 		{
-			_nameProperty = serializedObject.FindProperty("Name");
-			_tagsProperty = serializedObject.FindProperty("Tags");
-			_registerProperty = serializedObject.FindProperty("RegisterInAssetBank");
+			_nameProperty = serializedObject.FindProperty(nameof(_asset.Name));
+			_tagsProperty = serializedObject.FindProperty(nameof(_asset.Tags));
+			_registerProperty = serializedObject.FindProperty(nameof(_asset.RegisterInAssetBank));
 		}
 
 		protected override void OnHeaderGUI()
@@ -30,11 +31,17 @@ namespace BlueCheese.Core.Utils.Editor
 			serializedObject.Update();
 
 			EditorGUILayout.BeginVertical("box");
-			_foldout = EditorGUILayout.BeginFoldoutHeaderGroup(_foldout, $"Asset #{_asset.Id}");
+			_foldout = EditorGUILayout.BeginFoldoutHeaderGroup(_foldout, $"Asset #{_asset.Guid}");
 			EditorGUILayout.EndFoldoutHeaderGroup();
 			if (_foldout)
 			{
+				EditorGUILayout.BeginHorizontal();
 				EditorGUILayout.PropertyField(_registerProperty);
+				if (GUILayout.Button("Open Asset Bank", GUILayout.Width(150)))
+				{
+					AssetBank.SelectInProject();
+				}
+				EditorGUILayout.EndHorizontal();
 				EditorGUILayout.PropertyField(_nameProperty);
 				EditorGUILayout.PropertyField(_tagsProperty, true);
 			}
