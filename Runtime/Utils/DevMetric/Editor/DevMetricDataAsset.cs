@@ -8,6 +8,9 @@ using UnityEngine;
 
 namespace BlueCheese.Core.Utils.Editor
 {
+	/// <summary>
+	/// ScriptableObject asset that holds recorded development metrics.
+	/// </summary>
 	[CreateAssetMenu(fileName = "DevMetricData", menuName = "DevMetric/Data Asset", order = 0)]
 	public class DevMetricDataAsset : ScriptableObject
 	{

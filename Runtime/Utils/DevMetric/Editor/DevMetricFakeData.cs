@@ -10,6 +10,9 @@ using UnityEngine;
 
 namespace BlueCheese.Core.Utils.Editor
 {
+	/// <summary>
+	/// Editor utility to generate fake DevMetric data for testing the viewer.
+	/// </summary>
 	public static class DevMetricFakeData
 	{
 		private const string LocalAssetPath = "Assets/_Local/DevMetricData.asset";

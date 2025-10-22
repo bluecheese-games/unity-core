@@ -11,7 +11,10 @@ using UnityEngine;
 
 namespace BlueCheese.Core.Utils.Editor
 {
-	public class DevMetricWindow : EditorWindow
+	/// <summary>
+	/// Editor window to visualize DevMetric data from one or more DevMetricDataAsset assets.
+	/// </summary>
+	public class DevMetricsViewerWindow : EditorWindow
 	{
 		private enum Timeframe { Daily, Weekly, Monthly }
 
@@ -34,18 +37,18 @@ namespace BlueCheese.Core.Utils.Editor
 		}
 
 		private const string LocalAssetPath = "Assets/_Local/DevMetricData.asset";
-		private const string MenuPath = "Tools/DevMetric/Viewer";
+		private const string MenuPath = "Window/Dev Metrics Viewer";
 		private static readonly Color[] kPalette = new[]
 		{
-		new Color(0.33f, 0.73f, 0.98f),
-		new Color(0.94f, 0.76f, 0.20f),
-		new Color(0.98f, 0.41f, 0.35f),
-		new Color(0.48f, 0.80f, 0.65f),
-		new Color(0.78f, 0.57f, 0.96f),
-		new Color(0.99f, 0.59f, 0.07f),
-		new Color(0.57f, 0.64f, 0.69f),
-		new Color(0.36f, 0.84f, 0.85f),
-	};
+			new Color(0.33f, 0.73f, 0.98f),
+			new Color(0.94f, 0.76f, 0.20f),
+			new Color(0.98f, 0.41f, 0.35f),
+			new Color(0.48f, 0.80f, 0.65f),
+			new Color(0.78f, 0.57f, 0.96f),
+			new Color(0.99f, 0.59f, 0.07f),
+			new Color(0.57f, 0.64f, 0.69f),
+			new Color(0.36f, 0.84f, 0.85f),
+		};
 
 		private readonly List<Dataset> _datasets = new List<Dataset>();
 		private Vector2 _scroll;
@@ -68,7 +71,7 @@ namespace BlueCheese.Core.Utils.Editor
 		// Add to DevMetricWindow.cs (inside the class)
 		public static void OpenAndShow(DevMetricDataAsset asset)
 		{
-			var w = GetWindow<DevMetricWindow>(utility: false, title: "DevMetric");
+			var w = GetWindow<DevMetricsViewerWindow>(utility: false, title: "Dev Metrics Viewer");
 			w.minSize = new Vector2(700, 400);
 			w.Focus();
 
@@ -84,7 +87,7 @@ namespace BlueCheese.Core.Utils.Editor
 		[MenuItem(MenuPath)]
 		public static void Open()
 		{
-			var w = GetWindow<DevMetricWindow>(utility: false, title: "DevMetric");
+			var w = GetWindow<DevMetricsViewerWindow>(utility: false, title: "Dev Metrics Viewer");
 			w.minSize = new Vector2(700, 400);
 			w.Focus();
 			w.LoadDefaultLocal();
