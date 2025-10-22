@@ -28,14 +28,25 @@ namespace BlueCheese.Core.Utils.Editor
 
 			EditorGUILayout.BeginVertical("box");
 			EditorGUILayout.LabelField("Assets", EditorStyles.boldLabel);
-			GUI.enabled = false;
+			EditorGUI.indentLevel++;
 			for (int i = 0; i < _assetsProperty.arraySize; i++)
 			{
 				var assetProperty = _assetsProperty.GetArrayElementAtIndex(i);
-				string name = (assetProperty.objectReferenceValue as AssetBase).Name;
+				var name = assetProperty.FindPropertyRelative("Name").stringValue;
+				EditorGUILayout.BeginHorizontal();
+				GUI.enabled = false;
 				EditorGUILayout.PropertyField(assetProperty, new GUIContent(name));
+				GUI.enabled = true;
+				if (GUILayout.Button(EditorIcon.Select, EditorStyles.iconButton, GUILayout.Width(20), GUILayout.Height(20)))
+				{
+					if (assetProperty.boxedValue is AssetBaseRef assetBaseRef &&
+						assetBaseRef.TryLoad<AssetBase>(out var asset))
+					{
+						Selection.activeObject = asset;
+					}
+				}
+				EditorGUILayout.EndHorizontal();
 			}
-			GUI.enabled = true;
 			EditorGUILayout.EndVertical();
 
 			serializedObject.ApplyModifiedProperties();

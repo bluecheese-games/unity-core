@@ -11,16 +11,20 @@ namespace BlueCheese.Core.Utils
 		[HideInInspector] public string Name = string.Empty;
 		[HideInInspector] public Tags Tags = new();
 		[HideInInspector] public bool RegisterInAssetBank = true;
-
-		public int Id => GetInstanceID();
+		[HideInInspector] public AssetLoadMode LoadMode = AssetLoadMode.Resources;
 
 #if UNITY_EDITOR
-		private void OnValidate()
+		public string Guid => UnityEditor.AssetDatabase.AssetPathToGUID(UnityEditor.AssetDatabase.GetAssetPath(this));
+
+		public string TypeName => this.GetType().AssemblyQualifiedName;
+
+		protected void OnValidate()
 		{
 			if (string.IsNullOrEmpty(Name))
 			{
 				Name = name;
 			}
+
 			AssetBankGenerator.Regenerate();
 		}
 
