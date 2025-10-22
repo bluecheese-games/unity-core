@@ -9,6 +9,9 @@ using System;
 
 namespace BlueCheese.Core.Utils.Editor
 {
+	/// <summary>
+	/// Editor-only recorder for development metrics such as boot time, compilation time, and enter-play-mode time.
+	/// </summary>
 	[InitializeOnLoad]
 	public static class DevMetricRecorder
 	{

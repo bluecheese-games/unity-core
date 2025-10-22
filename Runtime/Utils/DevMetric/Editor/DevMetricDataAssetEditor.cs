@@ -24,7 +24,7 @@ namespace BlueCheese.Core.Utils.Editor
 				if (GUILayout.Button("Open in DevMetric Viewer", GUILayout.Height(24)))
 				{
 					var asset = (DevMetricDataAsset)target;
-					DevMetricWindow.OpenAndShow(asset);
+					DevMetricsViewerWindow.OpenAndShow(asset);
 				}
 				GUILayout.FlexibleSpace();
 			}
@@ -41,7 +41,7 @@ namespace BlueCheese.Core.Utils.Editor
 			var asset = obj as DevMetricDataAsset;
 			if (asset == null) return false;
 
-			DevMetricWindow.OpenAndShow(asset);
+			DevMetricsViewerWindow.OpenAndShow(asset);
 			return true; // we handled it
 		}
 	}

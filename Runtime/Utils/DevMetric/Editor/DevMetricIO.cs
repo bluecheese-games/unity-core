@@ -10,13 +10,16 @@ using UnityEngine;
 
 namespace BlueCheese.Core.Utils.Editor
 {
+	/// <summary>
+	/// Import and Export DevMetricDataAsset to/from JSON files.
+	/// </summary>
 	public static class DevMetricIO
 	{
 		[Serializable]
 		public class ExportMetricAggregate { public string name; public double sumSeconds; public int count; }
 
 		[Serializable]
-		public class ExportDayRecord { public string isoDate; public List<ExportMetricAggregate> metrics = new List<ExportMetricAggregate>(); }
+		public class ExportDayRecord { public string isoDate; public List<ExportMetricAggregate> metrics = new(); }
 
 		[Serializable]
 		public class DevMetricExport
