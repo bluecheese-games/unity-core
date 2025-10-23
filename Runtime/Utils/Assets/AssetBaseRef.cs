@@ -1,8 +1,9 @@
-//
+﻿//
 // Copyright (c) 2025 BlueCheese Games All rights reserved
 //
 
 using System;
+using System.IO;
 using UnityEngine;
 
 namespace BlueCheese.Core.Utils
@@ -43,6 +44,49 @@ namespace BlueCheese.Core.Utils
 				Tags = asset.Tags,
 				Mode = asset.LoadMode,
 			};
+		}
+
+		public bool TryCopyToResourcesFolder(string destResourcesAssetBankDir, out string destPath)
+		{
+			destPath = null;
+
+			if (Mode != AssetLoadMode.Resources)
+				return false;
+
+			if (string.IsNullOrEmpty(Guid))
+			{
+				Debug.LogError($"[AssetBank] Asset '{Name}' has no GUID.");
+				return false;
+			}
+
+			// Resolve source path from GUID
+			string srcPath = UnityEditor.AssetDatabase.GUIDToAssetPath(Guid);
+			if (string.IsNullOrEmpty(srcPath))
+			{
+				Debug.LogError($"[AssetBank] Could not resolve source path for GUID '{Guid}' ({Name}).");
+				return false;
+			}
+
+			// Ensure destination exists
+			Directory.CreateDirectory(destResourcesAssetBankDir);
+
+			// Keep original extension, but enforce GUID-based filename
+			string ext = Path.GetExtension(srcPath);
+			string fileName = string.IsNullOrEmpty(ext) ? Guid : (Guid + ext);
+
+			destPath = Path.Combine(destResourcesAssetBankDir, fileName);
+
+			try
+			{
+				File.Copy(srcPath, destPath, overwrite: true);
+				return true;
+			}
+			catch (System.Exception ex)
+			{
+				Debug.LogError($"[AssetBank] Copy failed for '{Name}' ({Guid}) → {destPath}\n{ex}");
+				destPath = null;
+				return false;
+			}
 		}
 #endif
 

@@ -6,8 +6,9 @@ using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
 using System;
+using BlueCheese.Core.Utils;
 
-namespace BlueCheese.Core.Utils.Editor
+namespace BlueCheese.Core.Editor
 {
 	/// <summary>
 	/// Editor-only recorder for development metrics such as boot time, compilation time, and enter-play-mode time.
@@ -46,6 +47,8 @@ namespace BlueCheese.Core.Utils.Editor
 			HookCompilation();
 			HookPlayMode();
 			RecordBootOncePerSession();
+
+			DevMetricRuntime.OnMetricRecorded += Record;
 		}
 
 		public static void Record(string metricName, double valueSeconds)

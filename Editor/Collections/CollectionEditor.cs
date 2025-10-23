@@ -2,9 +2,10 @@
 // Copyright (c) 2025 BlueCheese Games All rights reserved
 //
 
+using BlueCheese.Core.Utils;
 using UnityEditor;
 
-namespace BlueCheese.Core.Utils.Editor
+namespace BlueCheese.Core.Editor
 {
 	[CustomEditor(typeof(Collection<>), editorForChildClasses: true)]
 	public class CollectionEditor : AssetBaseEditor

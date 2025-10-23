@@ -7,7 +7,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using UnityEditor.Compilation;
 
 namespace BlueCheese.Core.ServiceLocator
 {

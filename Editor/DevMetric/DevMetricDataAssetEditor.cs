@@ -6,7 +6,7 @@ using UnityEditor;
 using UnityEditor.Callbacks;
 using UnityEngine;
 
-namespace BlueCheese.Core.Utils.Editor
+namespace BlueCheese.Core.Editor
 {
 	[CustomEditor(typeof(DevMetricDataAsset))]
 	public class DevMetricDataAssetEditor : UnityEditor.Editor

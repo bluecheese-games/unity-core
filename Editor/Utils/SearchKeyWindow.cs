@@ -5,7 +5,7 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace BlueCheese.Core.Utils.Editor
+namespace BlueCheese.Core.Editor
 {
 	public class SearchKeyWindow : EditorWindow
 	{
