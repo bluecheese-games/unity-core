@@ -2,8 +2,8 @@
 // Copyright (c) 2025 BlueCheese Games All rights reserved
 //
 
+using Cysharp.Threading.Tasks;
 using System;
-using System.IO;
 using UnityEngine;
 
 namespace BlueCheese.Core.Utils
@@ -15,7 +15,7 @@ namespace BlueCheese.Core.Utils
 		public string Guid;
 		public string TypeName;
 		public Tags Tags;
-		public AssetLoadMode Mode = AssetLoadMode.Resources;
+		public AssetLoadMode LoadMode = AssetLoadMode.Resources;
 
 		private Type _type;
 		private AssetBase _loadedAsset;
@@ -42,74 +42,29 @@ namespace BlueCheese.Core.Utils
 				Guid = asset.Guid,
 				TypeName = asset.TypeName,
 				Tags = asset.Tags,
-				Mode = asset.LoadMode,
+				LoadMode = asset.LoadMode,
 			};
-		}
-
-		public bool TryCopyToResourcesFolder(string destResourcesAssetBankDir, out string destPath)
-		{
-			destPath = null;
-
-			if (Mode != AssetLoadMode.Resources)
-				return false;
-
-			if (string.IsNullOrEmpty(Guid))
-			{
-				Debug.LogError($"[AssetBank] Asset '{Name}' has no GUID.");
-				return false;
-			}
-
-			// Resolve source path from GUID
-			string srcPath = UnityEditor.AssetDatabase.GUIDToAssetPath(Guid);
-			if (string.IsNullOrEmpty(srcPath))
-			{
-				Debug.LogError($"[AssetBank] Could not resolve source path for GUID '{Guid}' ({Name}).");
-				return false;
-			}
-
-			// Ensure destination exists
-			Directory.CreateDirectory(destResourcesAssetBankDir);
-
-			// Keep original extension, but enforce GUID-based filename
-			string ext = Path.GetExtension(srcPath);
-			string fileName = string.IsNullOrEmpty(ext) ? Guid : (Guid + ext);
-
-			destPath = Path.Combine(destResourcesAssetBankDir, fileName);
-
-			try
-			{
-				File.Copy(srcPath, destPath, overwrite: true);
-				return true;
-			}
-			catch (System.Exception ex)
-			{
-				Debug.LogError($"[AssetBank] Copy failed for '{Name}' ({Guid}) → {destPath}\n{ex}");
-				destPath = null;
-				return false;
-			}
 		}
 #endif
 
 		public bool TryLoad<T>(out T asset) where T : AssetBase
 		{
+			// Return cached asset if already loaded
 			if (_loadedAsset is T cachedAsset)
 			{
 				asset = cachedAsset;
 				return true;
 			}
 
-			asset = null;
-#if UNITY_EDITOR
-			// In the editor, always load via AssetDatabase for performance and correctness
-			string assetPath = UnityEditor.AssetDatabase.GUIDToAssetPath(Guid);
-			asset = UnityEditor.AssetDatabase.LoadAssetAtPath<T>(assetPath);
-			if (asset != null)
+			// Editor shortcut to load directly from AssetDatabase
+			if (TryGetEditorAsset(out asset))
 			{
+				_loadedAsset = asset;
 				return true;
 			}
-#endif
 
-			switch (Mode)
+			// Load asset based on LoadMode
+			switch (LoadMode)
 			{
 				case AssetLoadMode.Resources:
 					var fullPath = $"{AssetBank.AssetsResourcePath}/{Guid}";
@@ -121,9 +76,64 @@ namespace BlueCheese.Core.Utils
 					break;
 			}
 
+			// Cache loaded asset
 			_loadedAsset = asset;
-
+			if (_loadedAsset == null)
+			{
+				Debug.LogError($"[AssetBank] Failed to load asset '{Name}' (GUID: {Guid}, Type: {TypeName}, Mode: {LoadMode})");
+			}
 			return asset != null;
+		}
+
+		public async UniTask<T> TryLoadAsync<T>() where T : AssetBase
+		{
+			// Return cached asset if already loaded
+			if (_loadedAsset is T cachedAsset)
+			{
+				return cachedAsset;
+			}
+
+			// Editor shortcut to load directly from AssetDatabase
+			if (TryGetEditorAsset(out T editorAsset))
+			{
+				_loadedAsset = editorAsset;
+				return editorAsset;
+			}
+
+			// Load asset based on LoadMode
+			T asset = null;
+			switch (LoadMode)
+			{
+				case AssetLoadMode.Resources:
+					var fullPath = $"{AssetBank.AssetsResourcePath}/{Guid}";
+					var resourceRequest = Resources.LoadAsync<T>(fullPath);
+					await resourceRequest;
+					asset = resourceRequest.asset as T;
+					break;
+				case AssetLoadMode.Addressables:
+					Debug.LogError("Addressables loading not implemented yet.");
+					break;
+			}
+
+			// Cache loaded asset
+			_loadedAsset = asset;
+			if (_loadedAsset == null)
+			{
+				Debug.LogError($"[AssetBank] Failed to load asset '{Name}' (GUID: {Guid}, Type: {TypeName}, Mode: {LoadMode})");
+			}
+			return asset;
+		}
+
+		private bool TryGetEditorAsset<T>(out T asset) where T : AssetBase
+		{
+#if UNITY_EDITOR
+			string assetPath = UnityEditor.AssetDatabase.GUIDToAssetPath(Guid);
+			asset = UnityEditor.AssetDatabase.LoadAssetAtPath<T>(assetPath);
+			return asset != null;
+#else
+			asset = null;
+			return false;
+#endif
 		}
 	}
 }

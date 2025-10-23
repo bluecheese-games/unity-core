@@ -11,19 +11,7 @@ namespace BlueCheese.Core.Utils
 	{
         public string Guid;
 
-		private T _loadedAsset;
-
-		public T Asset
-		{
-			get
-			{
-				if (_loadedAsset == null)
-				{
-					AssetBank.TryLoadAssetByGuid(Guid, out _loadedAsset);
-				}
-				return _loadedAsset;
-			}
-		}
+		public readonly T Asset => AssetBank.GetAssetByGuid<T>(Guid);
 
 		public static implicit operator T (AssetRef<T> assetRef) => assetRef.Asset;
 	}

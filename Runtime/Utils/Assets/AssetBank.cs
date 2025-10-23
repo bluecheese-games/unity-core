@@ -2,6 +2,7 @@
 // Copyright (c) 2025 BlueCheese Games All rights reserved
 //
 
+using Cysharp.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -45,16 +46,31 @@ namespace BlueCheese.Core.Utils
 
 		static public IEnumerable<AssetBaseRef> GetAllAssets() => Instance._assets;
 
-		static public bool TryLoadAssetByGuid<T>(string guid, out T asset) where T : AssetBase
+		static public T GetAssetByGuid<T>(string guid) where T : AssetBase
 		{
-			if (Instance._assetsByGuid.TryGetValue(guid, out var assetBaseRef) &&
-				assetBaseRef.TryLoad(out asset))
+			if (Instance._assetsByGuid.TryGetValue(guid, out var assetBaseRef))
 			{
-				return asset != null;
+				if (assetBaseRef.TryLoad(out T asset))
+				{
+					return asset;
+				}
 			}
+			return null;
+		}
 
-			asset = null;
-			return false;
+		static public bool TryGetAssetByGuid<T>(string guid, out T asset) where T : AssetBase
+		{
+			asset = GetAssetByGuid<T>(guid);
+			return asset != null;
+		}
+
+		static public async UniTask<T> TryGetAssetByGuid<T>(string guid) where T : AssetBase
+		{
+			if (Instance._assetsByGuid.TryGetValue(guid, out var assetBaseRef))
+			{
+				return await assetBaseRef.TryLoadAsync<T>();
+			}
+			return null;
 		}
 
 		static public IEnumerable<T> GetAssetsByType<T>() where T : AssetBase
@@ -70,6 +86,20 @@ namespace BlueCheese.Core.Utils
 					}
 				}
 			}
+		}
+
+		/// <summary>
+		/// Returns all assets of the specified type asynchronously.
+		/// Using UniTask.WhenAll
+		/// </summary>
+		static public async UniTask<T[]> GetAssetsByTypeAsync<T>() where T : AssetBase
+		{
+			var type = typeof(T);
+			if (Instance._assetsByType.TryGetValue(type, out var assetRefs))
+			{
+				return await UniTask.WhenAll(assetRefs.Select(assetRef => assetRef.TryLoadAsync<T>()));
+			}
+			return Array.Empty<T>();
 		}
 
 		static public void Initialize()
