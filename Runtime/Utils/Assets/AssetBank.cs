@@ -73,7 +73,46 @@ namespace BlueCheese.Core.Utils
 			return null;
 		}
 
-		static public IEnumerable<T> GetAssetsByType<T>() where T : AssetBase
+		/// <summary>
+		/// Returns the first asset of the specified type.
+		/// </summary>
+		static public T GetAssetOfType<T>() where T : AssetBase
+		{
+			var type = typeof(T);
+			if (Instance._assetsByType.TryGetValue(type, out var assetRefs))
+			{
+				foreach (var assetRef in assetRefs)
+				{
+					if (assetRef.TryLoad(out T asset))
+					{
+						return asset;
+					}
+				}
+			}
+			return null;
+		}
+
+		/// <summary>
+		/// Returns the first asset of the specified type, asynchronously.
+		/// </summary>
+		static public async UniTask<T> GetAssetOfTypeAsync<T>() where T : AssetBase
+		{
+			var type = typeof(T);
+			if (Instance._assetsByType.TryGetValue(type, out var assetRefs))
+			{
+				var assetRef = assetRefs.FirstOrDefault();
+				if (assetRef != null)
+				{
+					return await assetRef.TryLoadAsync<T>();
+				}
+			}
+			return null;
+		}
+
+		/// <summary>
+		/// Returns all assets of the specified type.
+		/// </summary>
+		static public IEnumerable<T> GetAssetsOfType<T>() where T : AssetBase
 		{
 			var type = typeof(T);
 			if (Instance._assetsByType.TryGetValue(type, out var assetRefs))
@@ -92,7 +131,7 @@ namespace BlueCheese.Core.Utils
 		/// Returns all assets of the specified type asynchronously.
 		/// Using UniTask.WhenAll
 		/// </summary>
-		static public async UniTask<T[]> GetAssetsByTypeAsync<T>() where T : AssetBase
+		static public async UniTask<T[]> GetAssetsOfTypeAsync<T>() where T : AssetBase
 		{
 			var type = typeof(T);
 			if (Instance._assetsByType.TryGetValue(type, out var assetRefs))
