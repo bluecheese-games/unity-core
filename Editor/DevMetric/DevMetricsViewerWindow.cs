@@ -9,7 +9,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
-namespace BlueCheese.Core.Utils.Editor
+namespace BlueCheese.Core.Editor
 {
 	/// <summary>
 	/// Editor window to visualize DevMetric data from one or more DevMetricDataAsset assets.

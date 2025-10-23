@@ -7,8 +7,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using UnityEditor;
-using UnityEditor.VersionControl;
 using UnityEngine;
 
 namespace BlueCheese.Core.Config
@@ -76,10 +74,12 @@ namespace BlueCheese.Core.Config
             writer.Write(sb.ToString());
             writer.Close();
 
-            AssetDatabase.Refresh();
-        }
+#if UNITY_EDITOR
+            UnityEditor.AssetDatabase.Refresh();
+#endif
+		}
 
-        private static void GenerateConfigScript(string filename)
+		private static void GenerateConfigScript(string filename)
         {
             var sb = new StringBuilder()
                 .AppendLine("public static partial class Config")
@@ -92,10 +92,12 @@ namespace BlueCheese.Core.Config
             writer.Write(sb.ToString());
             writer.Close();
 
-            AssetDatabase.Refresh();
-        }
+#if UNITY_EDITOR
+			UnityEditor.AssetDatabase.Refresh();
+#endif
+		}
 
-        private static IEnumerable<string> GenerateConfigLines(ConfigItem[] items)
+		private static IEnumerable<string> GenerateConfigLines(ConfigItem[] items)
         {
             return items
                 .Select(item => GenerateConfigLine(item))
@@ -162,8 +164,10 @@ namespace BlueCheese.Core.Config
             // Write the list of strings back to the file, overwriting the original content
             File.WriteAllLines(filename, lines);
 
-            // Refresh assets
-            AssetDatabase.Refresh();
-        }
-    }
+			// Refresh assets
+#if UNITY_EDITOR
+			UnityEditor.AssetDatabase.Refresh();
+#endif
+		}
+	}
 }

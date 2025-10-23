@@ -2,7 +2,7 @@
 // Copyright (c) 2025 BlueCheese Games All rights reserved
 //
 
-namespace BlueCheese.Core.Utils
+namespace BlueCheese.Core.Editor
 {
 	class AssetBankAssetPostprocessor : UnityEditor.AssetPostprocessor
 	{

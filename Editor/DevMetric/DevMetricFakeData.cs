@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace BlueCheese.Core.Utils.Editor
+namespace BlueCheese.Core.Editor
 {
 	/// <summary>
 	/// Editor utility to generate fake DevMetric data for testing the viewer.

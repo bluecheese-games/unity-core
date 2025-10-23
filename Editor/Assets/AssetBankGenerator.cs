@@ -2,12 +2,13 @@
 // Copyright (c) 2025 BlueCheese Games All rights reserved
 //
 
+using BlueCheese.Core.Utils;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
-namespace BlueCheese.Core.Utils
+namespace BlueCheese.Core.Editor
 {
 	[InitializeOnLoad]
 	public static class AssetBankGenerator

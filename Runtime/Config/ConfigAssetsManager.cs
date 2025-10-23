@@ -4,7 +4,6 @@
 
 using NaughtyAttributes;
 using System.Linq;
-using UnityEditor;
 using UnityEngine;
 
 namespace BlueCheese.Core.Config
@@ -18,13 +17,15 @@ namespace BlueCheese.Core.Config
 
         [Button]
         public void FindConfigAssets()
-        {
-            ConfigAssets = AssetDatabase.FindAssets(string.Format("t:{0}", typeof(ConfigAsset)))
-                .Select(guid => AssetDatabase.LoadAssetAtPath<ConfigAsset>(AssetDatabase.GUIDToAssetPath(guid)))
+		{
+#if UNITY_EDITOR
+			ConfigAssets = UnityEditor.AssetDatabase.FindAssets(string.Format("t:{0}", typeof(ConfigAsset)))
+                .Select(guid => UnityEditor.AssetDatabase.LoadAssetAtPath<ConfigAsset>(UnityEditor.AssetDatabase.GUIDToAssetPath(guid)))
                 .ToArray();
-        }
+#endif
+		}
 
-        [Button]
+		[Button]
         public void GenerateCode()
         {
             foreach (var config in ConfigAssets)

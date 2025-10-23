@@ -2,13 +2,13 @@
 // Copyright (c) 2025 BlueCheese Games All rights reserved
 //
 
+using BlueCheese.Core.Utils;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using static Codice.Client.Common.Connection.AskCredentialsToUser;
 
-namespace BlueCheese.Core.Utils.Editor
+namespace BlueCheese.Core.Editor
 {
 	[CustomPropertyDrawer(typeof(Tags))]
 	public class TagsPropertyDrawer : PropertyDrawer

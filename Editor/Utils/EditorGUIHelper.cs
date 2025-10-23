@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace BlueCheese.Core.Utils.Editor
+namespace BlueCheese.Core.Editor
 {
 	public static class EditorIcon
 	{
@@ -37,7 +37,7 @@ namespace BlueCheese.Core.Utils.Editor
 		}
 	}
 
-	public static partial class EditorGUIHelper
+	public static class EditorGUIHelper
 	{
 		// Styles
 		private static bool _initialized = false;

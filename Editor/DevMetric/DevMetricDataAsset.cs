@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace BlueCheese.Core.Utils.Editor
+namespace BlueCheese.Core.Editor
 {
 	/// <summary>
 	/// ScriptableObject asset that holds recorded development metrics.

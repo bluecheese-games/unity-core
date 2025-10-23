@@ -2,11 +2,12 @@
 // Copyright (c) 2025 BlueCheese Games All rights reserved
 //
 
+using BlueCheese.Core.Utils;
 using System;
 using UnityEditor;
 using UnityEngine;
 
-namespace BlueCheese.Core.Utils.Editor
+namespace BlueCheese.Core.Editor
 {
 	[CustomPropertyDrawer(typeof(FlagEnum<>))]
 	public class FlagEnumPropertyDrawer : PropertyDrawer
