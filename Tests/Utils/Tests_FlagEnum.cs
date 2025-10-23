@@ -6,7 +6,6 @@ using BlueCheese.Core.Utils;
 using NUnit.Framework;
 using System;
 using System.Linq;
-using UnityEngine;
 
 public class Tests_FlagEnum
 {

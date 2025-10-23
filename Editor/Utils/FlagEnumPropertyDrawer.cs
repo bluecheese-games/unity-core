@@ -16,7 +16,7 @@ namespace BlueCheese.Core.Editor
 
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
-			var valueProperty = property.FindPropertyRelative("_value");
+			var valueProperty = property.FindPropertyRelative("_bitValue");
 			var enumType = fieldInfo.FieldType.GetGenericArguments()[0];
 			var enumValues = Enum.GetValues(enumType);
 
@@ -34,7 +34,20 @@ namespace BlueCheese.Core.Editor
 
 			if (EditorGUI.DropdownButton(position, new GUIContent(display), FocusType.Keyboard))
 			{
-				GenericMenu menu = new GenericMenu();
+				GenericMenu menu = new();
+				menu.AddItem(new GUIContent("(None)"), value == 0, () =>
+				{
+					valueProperty.serializedObject.Update();
+					valueProperty.longValue = 0;
+					valueProperty.serializedObject.ApplyModifiedProperties();
+				});
+				menu.AddItem(new GUIContent("(All)"), value == (1L << enumValues.Length) - 1, () =>
+				{
+					valueProperty.serializedObject.Update();
+					valueProperty.longValue = (1L << enumValues.Length) - 1;
+					valueProperty.serializedObject.ApplyModifiedProperties();
+				});
+				menu.AddItem(new GUIContent("----------------"), false, null);
 				for (int i = 0; i < enumValues.Length; i++)
 				{
 					object enumValObj = enumValues.GetValue(i);
