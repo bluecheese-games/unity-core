@@ -4,6 +4,7 @@
 
 using BlueCheese.Core.Utils;
 using System;
+using System.Text;
 using UnityEditor;
 using UnityEngine;
 
@@ -16,70 +17,92 @@ namespace BlueCheese.Core.Editor
 
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
-			var valueProperty = property.FindPropertyRelative("_bitValue");
-			var enumType = fieldInfo.FieldType.GetGenericArguments()[0];
-			var enumValues = Enum.GetValues(enumType);
-
-			if (enumValues.Length > MaxFlagValues)
+			SerializedProperty valueProperty = property.FindPropertyRelative("_bitValue");
+			if (valueProperty == null)
 			{
-				EditorGUI.HelpBox(position, $"Enum with more than {MaxFlagValues} values not supported ({enumType.Name})", MessageType.Error);
+				EditorGUI.LabelField(position, label.text, "Use FlagEnum<T> with a serializable enum.");
 				return;
 			}
 
-			// Draw prefix label and adjust position for the field
-			position = EditorGUI.PrefixLabel(position, label);
+			Type enumType = fieldInfo.FieldType.GetGenericArguments()[0];
+			if (!enumType.IsEnum)
+			{
+				EditorGUI.LabelField(position, label.text, "T must be an Enum");
+				return;
+			}
+
+			Array enumValues = Enum.GetValues(enumType);
+			string[] enumNames = Enum.GetNames(enumType);
+			if (enumValues.Length > MaxFlagValues)
+			{
+				EditorGUI.LabelField(position, label.text, $"Too many enum values (>{MaxFlagValues})");
+				return;
+			}
 
 			long value = valueProperty.longValue;
-			string display = BuildDisplayString(enumType, value);
 
-			if (EditorGUI.DropdownButton(position, new GUIContent(display), FocusType.Keyboard))
+			Rect fieldRect = EditorGUI.PrefixLabel(position, label);
+			if (GUI.Button(fieldRect, BuildDisplayString(enumValues, value), EditorStyles.popup))
 			{
-				GenericMenu menu = new();
-				menu.AddItem(new GUIContent("(None)"), value == 0, () =>
+				GenericMenu menu = new GenericMenu();
+
+				// Compute the "all" mask by OR-ing actual enum values (sparse-safe)
+				long allMask = 0;
+				for (int i = 0; i < enumValues.Length; i++)
+				{
+					long idx = Convert.ToInt64(enumValues.GetValue(i));
+					if (idx >= 0 && idx <= 63) allMask |= 1L << (int)idx;
+				}
+
+				// None / All
+				menu.AddItem(new GUIContent("None"), value == 0, () =>
 				{
 					valueProperty.serializedObject.Update();
 					valueProperty.longValue = 0;
 					valueProperty.serializedObject.ApplyModifiedProperties();
 				});
-				menu.AddItem(new GUIContent("(All)"), value == (1L << enumValues.Length) - 1, () =>
+				menu.AddItem(new GUIContent("All"), value == allMask, () =>
 				{
 					valueProperty.serializedObject.Update();
-					valueProperty.longValue = (1L << enumValues.Length) - 1;
+					valueProperty.longValue = allMask;
 					valueProperty.serializedObject.ApplyModifiedProperties();
 				});
 				menu.AddItem(new GUIContent("----------------"), false, null);
+
+				// Per-flag items (use underlying values, not the loop index)
 				for (int i = 0; i < enumValues.Length; i++)
 				{
 					object enumValObj = enumValues.GetValue(i);
 					string enumName = enumValObj.ToString();
-					long flagValue = 1L << i; // Use Convert.ToInt64(enumValObj) for custom enums
+					long idx = Convert.ToInt64(enumValObj);
+					if (idx < 0 || idx > 63) continue; // out-of-range flags are skipped in the UI
+					long flagValue = 1L << (int)idx;
 					bool isSet = (value & flagValue) != 0;
 
 					menu.AddItem(new GUIContent(enumName), isSet, () =>
 					{
-						long newValue = value;
-						if (isSet)
-							newValue &= ~flagValue;
-						else
-							newValue |= flagValue;
-
 						valueProperty.serializedObject.Update();
-						valueProperty.longValue = newValue;
+						long v = valueProperty.longValue;
+						if ((v & flagValue) != 0) v &= ~flagValue;
+						else v |= flagValue;
+						valueProperty.longValue = v;
 						valueProperty.serializedObject.ApplyModifiedProperties();
 					});
 				}
-				menu.DropDown(position);
+
+				menu.DropDown(fieldRect);
 			}
 		}
 
-		private string BuildDisplayString(Type enumType, long value)
+		private static string BuildDisplayString(Array enumValues, long value)
 		{
-			var enumValues = Enum.GetValues(enumType);
-			System.Text.StringBuilder sb = new System.Text.StringBuilder();
+			StringBuilder sb = new();
 			bool first = true;
 			for (int i = 0; i < enumValues.Length; i++)
 			{
-				long flagValue = 1L << i; // Use Convert.ToInt64(enumValues.GetValue(i)) for custom enums
+				long idx = Convert.ToInt64(enumValues.GetValue(i));
+				if (idx < 0 || idx > 63) continue;
+				long flagValue = 1L << (int)idx;
 				if ((value & flagValue) != 0)
 				{
 					if (!first) sb.Append(", ");
@@ -87,7 +110,7 @@ namespace BlueCheese.Core.Editor
 					first = false;
 				}
 			}
-			if (sb.Length == 0) return "(None)";
+			if (sb.Length == 0) return "None";
 			return sb.ToString();
 		}
 
