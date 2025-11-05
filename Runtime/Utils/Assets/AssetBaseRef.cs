@@ -17,6 +17,8 @@ namespace BlueCheese.Core.Utils
 		public Tags Tags;
 		public AssetLoadMode LoadMode = AssetLoadMode.Resources;
 
+		public bool IsValid => !string.IsNullOrWhiteSpace(Guid) && !string.IsNullOrWhiteSpace(TypeName);
+
 		private Type _type;
 		private AssetBase _loadedAsset;
 

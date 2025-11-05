@@ -31,11 +31,15 @@ namespace BlueCheese.Core.Editor
 		private const string EnterPlayNoDomainMetric = "EnterPlayMode_NoDomainReload_s";
 
 		private static DevMetricDataAsset _data;
+		private static bool _dataFileJustCreated = false;
 		private static double _compileStartTime = -1.0;
 
 		// Deferred cloud username refresh
 		private static bool _cloudNameDone;
 		private static double _cloudNameDeadline; // stop polling after this time
+
+		// An event for other systems to hook into
+		public static event Action<string, double> OnMetricRecorded;
 
 		[InitializeOnLoadMethod]
 		private static void EnsureOnLoadMethod() { /* no-op: forces class init */ }
@@ -46,7 +50,11 @@ namespace BlueCheese.Core.Editor
 			ScheduleCloudUserNameRefresh(); // attempts to improve username after services are ready
 			HookCompilation();
 			HookPlayMode();
-			RecordBootOncePerSession();
+			if (!_dataFileJustCreated)
+			{
+				// Record boot time only if the data file already existed (not on first run)
+				RecordBootOncePerSession();
+			}
 
 			DevMetricRuntime.OnMetricRecorded += Record;
 		}
@@ -56,6 +64,7 @@ namespace BlueCheese.Core.Editor
 			if (string.IsNullOrEmpty(metricName) || valueSeconds < 0) return;
 			if (!EnsureAssetLoaded()) return;
 			_data.AddSample(metricName, valueSeconds);
+			OnMetricRecorded?.Invoke(metricName, valueSeconds);
 			SaveAssetSoon();
 		}
 
@@ -141,6 +150,8 @@ namespace BlueCheese.Core.Editor
 			if (!AssetDatabase.IsValidFolder(AssetFolder))
 				AssetDatabase.CreateFolder("Assets", "_Local");
 
+			_dataFileJustCreated = false;
+
 			_data = AssetDatabase.LoadAssetAtPath<DevMetricDataAsset>(AssetPath);
 			if (_data == null)
 			{
@@ -150,6 +161,7 @@ namespace BlueCheese.Core.Editor
 				_data.userName = SafeEnvironmentUserName(); // provisional (not "anonymous")
 				AssetDatabase.CreateAsset(_data, AssetPath);
 				AssetDatabase.SaveAssets();
+				_dataFileJustCreated = true;
 			}
 			else
 			{
@@ -168,6 +180,7 @@ namespace BlueCheese.Core.Editor
 				{
 					EditorUtility.SetDirty(_data);
 					AssetDatabase.SaveAssets();
+					_dataFileJustCreated = true;
 				}
 			}
 		}
