@@ -44,8 +44,14 @@ namespace BlueCheese.Core.Utils
 			}
 		}
 
+		/// <summary>
+		/// Returns all assets in the bank.
+		/// </summary>
 		static public IEnumerable<AssetBaseRef> GetAllAssets() => Instance._assets;
 
+		/// <summary>
+		/// Returns the asset of the specified type.
+		/// </summary>
 		static public T GetAssetByGuid<T>(string guid) where T : AssetBase
 		{
 			if (Instance._assetsByGuid.TryGetValue(guid, out var assetBaseRef))
@@ -58,12 +64,18 @@ namespace BlueCheese.Core.Utils
 			return null;
 		}
 
+		/// <summary>
+		/// Tries to get the asset of the specified type.
+		/// </summary>
 		static public bool TryGetAssetByGuid<T>(string guid, out T asset) where T : AssetBase
 		{
 			asset = GetAssetByGuid<T>(guid);
 			return asset != null;
 		}
 
+		/// <summary>
+		/// Returns the asset of the specified type asynchronously.
+		/// </summary>
 		static public async UniTask<T> TryGetAssetByGuid<T>(string guid) where T : AssetBase
 		{
 			if (Instance._assetsByGuid.TryGetValue(guid, out var assetBaseRef))
@@ -146,9 +158,8 @@ namespace BlueCheese.Core.Utils
 			_instance = Resources.Load<AssetBank>(AssetBankResourcePath);
 			if (_instance == null)
 			{
-				Debug.LogWarning("AssetBank not found in Resources, creating an empty one");
+				Debug.LogWarning("AssetBank not found in Resources. Creating a new instance in memory.");
 				_instance = CreateInstance<AssetBank>();
-				return;
 			}
 
 			_instance._assetsByName.Clear();
@@ -158,10 +169,20 @@ namespace BlueCheese.Core.Utils
 
 			foreach (var asset in _instance._assets)
 			{
-				_instance._assetsByName[asset.Name] = asset;
+				if (!asset.IsValid)
+				{
+					Debug.LogWarning($"AssetBank: Invalid asset reference found. Guid: '{asset.Guid}', TypeName: '{asset.TypeName}'");
+					continue;
+				}
+
+				if (!string.IsNullOrWhiteSpace(asset.Name))
+				{
+					_instance._assetsByName[asset.Name] = asset;
+				}
+
 				_instance._assetsByGuid[asset.Guid] = asset;
 
-				for (int i = 0; i < asset.Tags.Length; i++)
+				for (int i = 0; i < asset.Tags.Count; i++)
 				{
 					if (!_instance._assetsByTags.ContainsKey(asset.Tags[i]))
 					{
@@ -187,6 +208,8 @@ namespace BlueCheese.Core.Utils
 			{
 				asset.OnRegister();
 			}
+
+			UnityEditor.EditorUtility.SetDirty(this);
 		}
 
 		static public void SelectInProject()

@@ -110,9 +110,9 @@ namespace BlueCheese.Core.Utils
 		public static bool operator !=(FlagEnum<T> a, T b) => a.Value != GetFlagValue(b);
 		public static bool operator ==(T a, FlagEnum<T> b) => GetFlagValue(a) == b.Value;
 		public static bool operator !=(T a, FlagEnum<T> b) => GetFlagValue(a) != b.Value;
-		public override bool Equals(object obj) => obj is FlagEnum<T> other && Equals(other);
-		public bool Equals(FlagEnum<T> other) => Value == other.Value;
-		public override int GetHashCode() => Value.GetHashCode();
+		public override readonly bool Equals(object obj) => obj is FlagEnum<T> other && Equals(other);
+		public readonly bool Equals(FlagEnum<T> other) => Value == other.Value;
+		public override readonly int GetHashCode() => Value.GetHashCode();
 
 		// Conversions
 		public static implicit operator FlagEnum<T>(T flag) => new(GetFlagValue(flag)); // T -> FlagEnum<T>
@@ -151,13 +151,12 @@ namespace BlueCheese.Core.Utils
 			if (s.StartsWith("-"))
 			{
 				// Fallback: format manually to 64 bits when negative
-				return Convert.ToString((long)Value & int.MaxValue, 2).PadLeft(64, '0');
+				return Convert.ToString(Value & int.MaxValue, 2).PadLeft(64, '0');
 			}
 			return s.PadLeft(64, '0');
 		}
 
-		public readonly IEnumerable<T> GetFlags() =>
-			AllValues.Where(HasFlag);
+		public readonly IEnumerable<T> GetFlags() => AllValues.Where(HasFlag);
 
 		public readonly IList<T> ToList() => GetFlags().ToList();
 
