@@ -24,8 +24,10 @@ namespace BlueCheese.Core.Editor
 		public static Texture2D Open => GetTexture("d_FolderOpened Icon");
 		public static Texture2D Link => GetTexture("d_UnityEditor.FindDependencies");
 		public static Texture2D Select => GetTexture("d_curvekeyframeselectedoverlay");
+		public static Texture2D Scene => GetTexture("d_SceneViewLighting");
+		public static Texture2D Prefab => GetTexture("d_Prefab Icon");
 
-		private static Dictionary<string, Texture2D> _icons = new Dictionary<string, Texture2D>();
+		private static readonly Dictionary<string, Texture2D> _icons = new();
 
 		private static Texture2D GetTexture(string name)
 		{
