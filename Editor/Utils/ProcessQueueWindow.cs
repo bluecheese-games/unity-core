@@ -17,6 +17,7 @@ namespace BlueCheese.Core.Editor
 	{
 		private ProcessQueue _queue;
 		private CancellationTokenSource _cts;
+		private Action _onComplete;
 		private List<string> _allSteps = new List<string>();
 		private List<GroupedStep> _groupedSteps = new List<GroupedStep>();
 		private Vector2 _scrollPosition;
@@ -24,49 +25,130 @@ namespace BlueCheese.Core.Editor
 		private bool _autoClose;
 
 		// Time tracking
-		private double _startTime;
-		private double _endTime;
+		[SerializeField] private double _startTime;
+		[SerializeField] private double _endTime;
+
+		// Per-step duration tracking
+		private double[] _stepDurations;
+		private double _lastStepFinishTime;
+
+		// Error tracking
+		private Dictionary<int, string> _stepErrors = new Dictionary<int, string>();
+
+		// Auto-scroll tracking
+		private int _lastActiveGroupIndex = -1;
 
 		// Styles
 		private GUIStyle _stepPendingStyle;
 		private GUIStyle _stepRunningStyle;
 		private GUIStyle _stepDoneStyle;
 		private GUIStyle _stepCancelledStyle;
+		private GUIStyle _stepFailedStyle;
+		private GUIStyle _durationStyle;
 
-		private struct GroupedStep
+		/// <summary>
+		/// Gets the total duration of the process in seconds.
+		/// If running, returns current elapsed time.
+		/// If finished, returns final duration.
+		/// Returns 0 if not started.
+		/// </summary>
+		public double TotalTime
+		{
+			get
+			{
+				if (_startTime <= 0) return 0;
+				double currentTime = EditorApplication.timeSinceStartup;
+				double currentEnd = _endTime > 0 ? _endTime : currentTime;
+				return Math.Max(0, currentEnd - _startTime);
+			}
+		}
+
+		[Serializable]
+		private class GroupedStep
 		{
 			public string Name;
-			public int StartIndex;
-			public int Count;
+			public List<int> Indices = new List<int>(); // Raw indices in the original queue
 		}
 
 		/// <summary>
-		/// Opens the window, configures it, and starts the process immediately.
+		/// Opens the window. If autoStart is true, processing begins immediately.
+		/// Otherwise, the user must click "Start Process".
 		/// </summary>
-		public static void Process(ProcessQueue queue, string title, Action onComplete = null, bool autoClose = false)
+		public static void Open(ProcessQueue queue, string title, Action onComplete = null, bool autoClose = false, bool autoStart = true)
 		{
 			var window = GetWindow<ProcessQueueWindow>(true, title, true);
-			window.Initialize(queue, onComplete, autoClose);
+			window.Initialize(queue, onComplete, autoClose, autoStart);
 			window.Show();
 		}
 
-		private void Initialize(ProcessQueue queue, Action onComplete, bool autoClose)
+		private void Initialize(ProcessQueue queue, Action onComplete, bool autoClose, bool autoStart)
 		{
 			_queue = queue;
 			_cts = new CancellationTokenSource();
+			_onComplete = onComplete;
 			_isCancelled = false;
 			_autoClose = autoClose;
 
-			// Start tracking time (using realtimeSinceStartup so it works in Edit Mode)
-			_startTime = Time.realtimeSinceStartup;
+			// Reset time tracking
+			_startTime = 0;
 			_endTime = 0;
+			_lastStepFinishTime = 0;
+			_lastActiveGroupIndex = -1;
 
 			// Snapshot the steps for the checklist before they are dequeued
 			_allSteps = _queue.GetPendingStepNames().ToList();
+			_stepDurations = new double[_allSteps.Count];
+			_stepErrors.Clear();
+
 			GroupSteps();
 
-			// Start the process
-			RunProcess(onComplete).Forget();
+			// Hook into queue events
+			_queue.Progressed += OnQueueProgress;
+			_queue.StepFailed += OnStepFailed;
+
+			if (autoStart)
+			{
+				StartProcess();
+			}
+		}
+
+		private void StartProcess()
+		{
+			_startTime = EditorApplication.timeSinceStartup;
+			_lastStepFinishTime = _startTime;
+			RunProcess().Forget();
+		}
+
+		private void OnQueueProgress(float progress)
+		{
+			// Calculate duration for the step that just finished
+			double now = EditorApplication.timeSinceStartup;
+
+			// Determine index of finished item based on progress
+			int processedCount = Mathf.RoundToInt(progress * _queue.TotalCount);
+			int finishedIndex = processedCount - 1;
+
+			if (finishedIndex >= 0 && finishedIndex < _stepDurations.Length)
+			{
+				_stepDurations[finishedIndex] = now - _lastStepFinishTime;
+			}
+
+			_lastStepFinishTime = now;
+			Repaint();
+		}
+
+		private void OnStepFailed(int index, Exception ex)
+		{
+			if (!_stepErrors.ContainsKey(index))
+			{
+				_stepErrors[index] = ex.Message;
+			}
+		}
+
+		private bool IsIgnoredStep(string name)
+		{
+			if (string.IsNullOrEmpty(name)) return false;
+			return name.StartsWith("Delay") || name == "WaitForNextFrame";
 		}
 
 		private void GroupSteps()
@@ -74,40 +156,52 @@ namespace BlueCheese.Core.Editor
 			_groupedSteps.Clear();
 			if (_allSteps.Count == 0) return;
 
-			var current = new GroupedStep { Name = _allSteps[0], StartIndex = 0, Count = 1 };
+			GroupedStep current = null;
 
-			for (int i = 1; i < _allSteps.Count; i++)
+			for (int i = 0; i < _allSteps.Count; i++)
 			{
-				if (_allSteps[i] == current.Name)
+				string name = _allSteps[i];
+
+				if (IsIgnoredStep(name)) continue;
+
+				if (current != null && current.Name == name)
 				{
-					current.Count++;
+					current.Indices.Add(i);
 				}
 				else
 				{
+					current = new GroupedStep { Name = name };
+					current.Indices.Add(i);
 					_groupedSteps.Add(current);
-					current = new GroupedStep { Name = _allSteps[i], StartIndex = i, Count = 1 };
 				}
 			}
-			_groupedSteps.Add(current);
 		}
 
-		private async UniTaskVoid RunProcess(Action onComplete)
+		private async UniTaskVoid RunProcess()
 		{
+			// Handle empty queue case gracefully
+			if (_queue.Count == 0)
+			{
+				_onComplete?.Invoke();
+				_endTime = EditorApplication.timeSinceStartup;
+
+				if (_autoClose && !_isCancelled)
+				{
+					Close();
+					return;
+				}
+
+				Repaint();
+				return;
+			}
+
 			try
 			{
 				await _queue.ProcessAsync(_cts.Token);
-				onComplete?.Invoke();
+				_onComplete?.Invoke();
 
-				// Check auto-close condition before final repaint
 				if (_autoClose && !_isCancelled)
 				{
-					// Stop timer now so we don't count the delay
-					_endTime = Time.realtimeSinceStartup;
-					// Force a repaint so user sees "Complete" state briefly
-					Repaint();
-
-					await UniTask.Delay(1000, cancellationToken: _cts.Token);
-
 					Close();
 					return;
 				}
@@ -119,20 +213,23 @@ namespace BlueCheese.Core.Editor
 			}
 			catch (Exception e)
 			{
-				// Treat errors as cancellation/stop for visual purposes
 				_isCancelled = true;
 				Debug.LogError($"Process failed: {e}");
 			}
 			finally
 			{
-				// Stop the timer if not already stopped (e.g. cancelled or error)
 				if (_endTime == 0)
-					_endTime = Time.realtimeSinceStartup;
+					_endTime = EditorApplication.timeSinceStartup;
+
+				if (_queue != null)
+				{
+					_queue.Progressed -= OnQueueProgress;
+					_queue.StepFailed -= OnStepFailed;
+				}
 
 				_cts?.Dispose();
 				_cts = null;
 
-				// Only repaint if we didn't just close the window
 				if (!(_autoClose && !_isCancelled))
 				{
 					Repaint();
@@ -142,13 +239,19 @@ namespace BlueCheese.Core.Editor
 
 		private void OnEnable()
 		{
-			// Force repaint regularly for smooth progress bar and timer
 			EditorApplication.update += Repaint;
 		}
 
 		private void OnDisable()
 		{
 			EditorApplication.update -= Repaint;
+
+			if (_queue != null)
+			{
+				_queue.Progressed -= OnQueueProgress;
+				_queue.StepFailed -= OnStepFailed;
+			}
+
 			if (_cts != null)
 			{
 				_cts.Cancel();
@@ -177,15 +280,10 @@ namespace BlueCheese.Core.Editor
 		{
 			EditorGUILayout.Space(10);
 
-			// Calculate duration
-			double currentEnd = _endTime > 0 ? _endTime : Time.realtimeSinceStartup;
-			double duration = Math.Max(0, currentEnd - _startTime);
-			string timeStr = $"{duration:0.0}s";
+			string timeStr = FormatDuration(TotalTime);
 
-			// Get a single rect for the whole header line
 			Rect r = EditorGUILayout.GetControlRect(false, 20);
 
-			// 1. Draw Status (Left Aligned)
 			if (_isCancelled)
 			{
 				var style = new GUIStyle(EditorStyles.boldLabel);
@@ -196,17 +294,18 @@ namespace BlueCheese.Core.Editor
 			{
 				EditorGUI.LabelField(r, $"Processing: {_queue.ProcessingAction}...", EditorStyles.boldLabel);
 			}
-			else if (_queue.TotalCount > 0 && _queue.Count == 0)
+			else if (_endTime > 0)
 			{
-				EditorGUI.LabelField(r, "Process Complete!", EditorStyles.boldLabel);
+				string msg = (_allSteps.Count == 0) ? "Queue Empty (Done)" : "Process Complete!";
+				EditorGUI.LabelField(r, msg, EditorStyles.boldLabel);
 			}
 			else
 			{
-				EditorGUI.LabelField(r, "Waiting...", EditorStyles.boldLabel);
+				string msg = (_allSteps.Count == 0) ? "Queue is Empty" : "Ready to Start";
+				EditorGUI.LabelField(r, msg, EditorStyles.boldLabel);
 			}
 
-			// 2. Draw Timer (Right Aligned)
-			var timerStyle = new GUIStyle(EditorStyles.label); // Standard label font (not bold) for contrast, or use boldLabel if preferred
+			var timerStyle = new GUIStyle(EditorStyles.label);
 			timerStyle.alignment = TextAnchor.MiddleRight;
 			EditorGUI.LabelField(r, timeStr, timerStyle);
 
@@ -216,12 +315,30 @@ namespace BlueCheese.Core.Editor
 		private void DrawProgressBar()
 		{
 			Rect r = EditorGUILayout.GetControlRect(false, 20);
-			float progress = _queue.Progress;
 
-			// If cancelled, show the progress frozen where it stopped
+			int totalVisible = _groupedSteps.Sum(g => g.Indices.Count);
+
+			if (totalVisible == 0)
+			{
+				float emptyProgress = (_endTime > 0) ? 1.0f : 0.0f;
+				EditorGUI.ProgressBar(r, emptyProgress, _endTime > 0 ? "Completed" : "Empty");
+				EditorGUILayout.Space(10);
+				return;
+			}
+
+			int completedVisible = 0;
+			int rawProcessedCount = Mathf.RoundToInt(_queue.Progress * _queue.TotalCount);
+
+			foreach (var group in _groupedSteps)
+			{
+				completedVisible += group.Indices.Count(idx => idx < rawProcessedCount);
+			}
+
+			float progress = totalVisible > 0 ? (float)completedVisible / totalVisible : 0f;
+
 			string label = _isCancelled
 				? "Cancelled"
-				: $"{_queue.TotalCount - _queue.Count} / {_queue.TotalCount}";
+				: $"{completedVisible} / {totalVisible}";
 
 			EditorGUI.ProgressBar(r, progress, label);
 			EditorGUILayout.Space(10);
@@ -231,78 +348,179 @@ namespace BlueCheese.Core.Editor
 		{
 			EditorGUILayout.LabelField("Tasks", EditorStyles.boldLabel);
 
+			// Calculate state for auto-scroll and rendering
+			int rawProcessedCount = Mathf.RoundToInt(_queue.Progress * _queue.TotalCount);
+			int dequeuedCount = _queue.TotalCount - _queue.Count;
+			int rawCancelledIndex = -1;
+			if (_isCancelled)
+			{
+				rawCancelledIndex = (dequeuedCount > rawProcessedCount) ? dequeuedCount - 1 : dequeuedCount;
+			}
+
+			// Identify active group for auto-scroll
+			int activeGroupIndex = -1;
+			if (_queue.IsProcessing && !_isCancelled)
+			{
+				for (int i = 0; i < _groupedSteps.Count; i++)
+				{
+					var group = _groupedSteps[i];
+					int min = group.Indices[0];
+					int max = group.Indices[group.Indices.Count - 1];
+					if (rawProcessedCount >= min && rawProcessedCount <= max)
+					{
+						activeGroupIndex = i;
+						break;
+					}
+				}
+			}
+
+			// Apply Auto-Scroll only if the active group has changed
+			if (activeGroupIndex != -1 && activeGroupIndex != _lastActiveGroupIndex)
+			{
+				_lastActiveGroupIndex = activeGroupIndex;
+
+				float itemHeight = 22f; // Approx height per row
+				float topY = activeGroupIndex * itemHeight;
+				float bottomY = topY + itemHeight;
+
+				float visibleHeight = position.height - 140f;
+				if (visibleHeight < itemHeight) visibleHeight = itemHeight;
+
+				if (bottomY > _scrollPosition.y + visibleHeight)
+				{
+					_scrollPosition.y = bottomY - visibleHeight;
+				}
+				else if (topY < _scrollPosition.y)
+				{
+					_scrollPosition.y = topY;
+				}
+			}
+
 			using (var scroll = new EditorGUILayout.ScrollViewScope(_scrollPosition, EditorStyles.helpBox))
 			{
 				_scrollPosition = scroll.scrollPosition;
 
-				// Calculate indices to determine state of each item
-				int processedCount = Mathf.RoundToInt(_queue.Progress * _queue.TotalCount);
-				// Items that have been removed from the queue (either finished or currently running/cancelled)
-				int dequeuedCount = _queue.TotalCount - _queue.Count;
-
-				// Determine which index was the "stopper" if cancelled
-				int cancelledIndex = -1;
-				if (_isCancelled)
+				if (_groupedSteps.Count == 0)
 				{
-					// If we dequeued more than we finished, the last dequeued item failed/cancelled mid-run.
-					// Otherwise, we cancelled between steps, so the next pending item is the stopper.
-					cancelledIndex = (dequeuedCount > processedCount) ? dequeuedCount - 1 : dequeuedCount;
+					EditorGUILayout.LabelField("No tasks to process.", EditorStyles.centeredGreyMiniLabel);
 				}
-
-				foreach (var group in _groupedSteps)
+				else
 				{
-					int groupEnd = group.StartIndex + group.Count - 1;
-					string label = group.Count > 1 ? $"{group.Name} (x{group.Count})" : group.Name;
+					foreach (var group in _groupedSteps)
+					{
+						int minIndex = group.Indices[0];
+						int maxIndex = group.Indices[group.Indices.Count - 1];
+						int count = group.Indices.Count;
 
-					// Determine state
-					if (_isCancelled && cancelledIndex >= group.StartIndex && cancelledIndex <= groupEnd)
-					{
-						// Cancelled within this group
-						DrawStepItem(label, _stepCancelledStyle, "X");
-					}
-					else if (processedCount > groupEnd)
-					{
-						// Entire group finished
-						DrawStepItem(label, _stepDoneStyle, "✔");
-					}
-					else if (processedCount >= group.StartIndex && _queue.IsProcessing)
-					{
-						// Inside this group
-						// Show progress in label e.g. "Name (2/5)"
-						if (group.Count > 1)
+						int finishedInGroup = group.Indices.Count(idx => idx < rawProcessedCount);
+
+						// Check errors
+						string errorMsg = null;
+						bool hasGroupError = false;
+
+						foreach (int idx in group.Indices)
 						{
-							int currentInGroup = processedCount - group.StartIndex + 1; // 1-based index
-							label = $"{group.Name} ({currentInGroup}/{group.Count})";
+							if (_stepErrors.ContainsKey(idx))
+							{
+								hasGroupError = true;
+								if (errorMsg == null) errorMsg = _stepErrors[idx]; // Grab first error
+								else errorMsg += "\n" + _stepErrors[idx]; // Append others
+							}
 						}
-						DrawStepItem(label, _stepRunningStyle, "▶");
-					}
-					else if (processedCount >= group.StartIndex && processedCount <= groupEnd && !_queue.IsProcessing && !_isCancelled)
-					{
-						// Edge case: Queue might be finishing up or between frames, but technically "Active"
-						DrawStepItem(label, _stepRunningStyle, "▶");
-					}
-					else
-					{
-						// Pending
-						DrawStepItem(label, _stepPendingStyle, "•");
+
+						double groupDuration = 0;
+						foreach (int idx in group.Indices)
+						{
+							if (idx < rawProcessedCount)
+							{
+								groupDuration += _stepDurations[idx];
+							}
+						}
+						string durationLabel = (finishedInGroup > 0) ? FormatDuration(groupDuration) : "";
+
+						string label = group.Name;
+						if (count > 1)
+						{
+							if (finishedInGroup < count && finishedInGroup > 0)
+								label = $"{group.Name} ({finishedInGroup + 1}/{count})";
+							else
+								label = $"{group.Name} (x{count})";
+						}
+
+						bool isGroupCancelled = _isCancelled && rawCancelledIndex >= minIndex && rawCancelledIndex <= maxIndex;
+
+						if (hasGroupError)
+						{
+							DrawStepItem(label, _stepFailedStyle, "!", durationLabel, errorMsg);
+						}
+						else if (isGroupCancelled)
+						{
+							DrawStepItem(label, _stepCancelledStyle, "X", durationLabel);
+						}
+						else if (finishedInGroup == count)
+						{
+							DrawStepItem(label, _stepDoneStyle, "✔", durationLabel);
+						}
+						else if (rawProcessedCount >= minIndex && rawProcessedCount <= maxIndex)
+						{
+							DrawStepItem(label, _stepRunningStyle, "▶", durationLabel);
+						}
+						else if (rawProcessedCount > maxIndex)
+						{
+							DrawStepItem(label, _stepDoneStyle, "✔", durationLabel);
+						}
+						else
+						{
+							DrawStepItem(label, _stepPendingStyle, "•", "");
+						}
 					}
 				}
 			}
 		}
 
-		private void DrawStepItem(string label, GUIStyle style, string icon)
+		private void DrawStepItem(string label, GUIStyle style, string icon, string duration, string tooltip = "")
 		{
 			EditorGUILayout.BeginHorizontal();
+
 			GUILayout.Label(icon, style, GUILayout.Width(20));
-			GUILayout.Label(label, style);
+
+			GUIContent content = new GUIContent(label, tooltip);
+			GUILayout.Label(content, style);
+
+			GUILayout.FlexibleSpace();
+
+			if (!string.IsNullOrEmpty(duration))
+			{
+				GUILayout.Label(duration, _durationStyle);
+			}
+
 			EditorGUILayout.EndHorizontal();
+		}
+
+		private string FormatDuration(double duration)
+		{
+			if (duration < 60.0)
+			{
+				return $"{duration:0.0}s";
+			}
+
+			int minutes = (int)(duration / 60);
+			double seconds = duration % 60;
+			return $"{minutes}m {seconds:0}s";
 		}
 
 		private void DrawFooter()
 		{
 			EditorGUILayout.Space(10);
 
-			if (!_isCancelled && _queue.IsProcessing)
+			if (_isCancelled)
+			{
+				if (GUILayout.Button("Close", GUILayout.Height(30)))
+				{
+					Close();
+				}
+			}
+			else if (_queue.IsProcessing)
 			{
 				GUI.backgroundColor = Color.red;
 				if (GUILayout.Button("Cancel Process", GUILayout.Height(30)))
@@ -311,13 +529,21 @@ namespace BlueCheese.Core.Editor
 				}
 				GUI.backgroundColor = Color.white;
 			}
-			else
+			else if (_endTime > 0)
 			{
-				// Show Close button if finished OR cancelled
 				if (GUILayout.Button("Close", GUILayout.Height(30)))
 				{
 					Close();
 				}
+			}
+			else
+			{
+				GUI.backgroundColor = Color.green;
+				if (GUILayout.Button("Process", GUILayout.Height(30)))
+				{
+					StartProcess();
+				}
+				GUI.backgroundColor = Color.white;
 			}
 		}
 
@@ -347,6 +573,21 @@ namespace BlueCheese.Core.Editor
 				_stepCancelledStyle = new GUIStyle(EditorStyles.label);
 				_stepCancelledStyle.fontStyle = FontStyle.Bold;
 				_stepCancelledStyle.normal.textColor = Color.red;
+			}
+
+			if (_stepFailedStyle == null)
+			{
+				_stepFailedStyle = new GUIStyle(EditorStyles.label);
+				_stepFailedStyle.fontStyle = FontStyle.Bold;
+				_stepFailedStyle.normal.textColor = new Color(1f, 0.4f, 0.4f); // Light Red/Orange
+				_stepFailedStyle.hover.textColor = Color.red;
+			}
+
+			if (_durationStyle == null)
+			{
+				_durationStyle = new GUIStyle(EditorStyles.label);
+				_durationStyle.normal.textColor = Color.gray;
+				_durationStyle.alignment = TextAnchor.MiddleRight;
 			}
 		}
 	}

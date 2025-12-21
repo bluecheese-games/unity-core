@@ -11,6 +11,22 @@ using Cysharp.Threading.Tasks;
 namespace BlueCheese.Core.Utils
 {
 	/// <summary>
+	/// Defines behavior when a task throws an unhandled exception.
+	/// </summary>
+	public enum ExceptionBehavior
+	{
+		/// <summary>
+		/// Log the exception and continue processing the next item.
+		/// </summary>
+		Continue,
+
+		/// <summary>
+		/// Stop processing and propagate the exception (cancelling the queue).
+		/// </summary>
+		Cancel
+	}
+
+	/// <summary>
 	/// A simple ordered processing queue for Actions, async steps, and coroutines.
 	/// 
 	/// NOTE: Not thread-safe. Intended for use from Unity's main thread only.
@@ -34,6 +50,12 @@ namespace BlueCheese.Core.Utils
 		{
 			_coroutineRunner = coroutineRunner;
 		}
+
+		/// <summary>
+		/// Determines what happens when a task throws an exception.
+		/// Default is Continue.
+		/// </summary>
+		public ExceptionBehavior Behavior { get; set; } = ExceptionBehavior.Continue;
 
 		/// <summary>
 		/// Remaining items in the queue (not yet processed).
@@ -64,12 +86,18 @@ namespace BlueCheese.Core.Utils
 		public event Action<float> Progressed;
 		public event Action Complete;
 
+		/// <summary>
+		/// Fired when an individual step fails.
+		/// Arguments: Step Index (0-based relative to run), Exception.
+		/// </summary>
+		public event Action<int, Exception> StepFailed;
+
 		#region Enqueue overloads
 
 		/// <summary>
 		/// Enqueue a synchronous action (fluent).
 		/// </summary>
-		public ProcessQueue Enqueue(Action action, string name = null)
+		public ProcessQueue EnqueueAction(Action action, string name = null)
 		{
 			if (_isProcessing)
 				throw new InvalidOperationException("ProcessQueue is already processing.");
@@ -85,7 +113,7 @@ namespace BlueCheese.Core.Utils
 		/// <summary>
 		/// Enqueue an async action that takes a CancellationToken.
 		/// </summary>
-		public ProcessQueue Enqueue(Func<CancellationToken, UniTask> asyncAction, string name = null)
+		public ProcessQueue EnqueueAsync(Func<CancellationToken, UniTask> asyncAction, string name = null)
 		{
 			if (_isProcessing)
 				throw new InvalidOperationException("ProcessQueue is already processing.");
@@ -102,20 +130,20 @@ namespace BlueCheese.Core.Utils
 		/// Enqueue an async action with no token (fluent).
 		/// The queue will still honor cancellation between steps.
 		/// </summary>
-		public ProcessQueue Enqueue(Func<UniTask> asyncAction, string name = null)
+		public ProcessQueue EnqueueAsync(Func<UniTask> asyncAction, string name = null)
 		{
 			if (asyncAction == null)
 				throw new ArgumentNullException(nameof(asyncAction));
 
 			// Adapt to token-aware version.
 			Func<CancellationToken, UniTask> wrapped = _ => asyncAction();
-			return Enqueue(wrapped, name ?? asyncAction.Method.Name);
+			return EnqueueAsync(wrapped, name ?? asyncAction.Method.Name);
 		}
 
 		/// <summary>
 		/// Enqueue a token-aware synchronous action (fluent).
 		/// </summary>
-		public ProcessQueue Enqueue(Action<CancellationToken> action, string name = null)
+		public ProcessQueue EnqueueAction(Action<CancellationToken> action, string name = null)
 		{
 			if (_isProcessing)
 				throw new InvalidOperationException("ProcessQueue is already processing.");
@@ -138,7 +166,7 @@ namespace BlueCheese.Core.Utils
 		/// Enqueue a coroutine factory (Func&lt;IEnumerator&gt;).
 		/// Requires a non-null ICoroutineRunner passed in the constructor.
 		/// </summary>
-		public ProcessQueue Enqueue(Func<IEnumerator> coroutineFactory, string name = null)
+		public ProcessQueue EnqueueCoroutine(Func<IEnumerator> coroutineFactory, string name = null)
 		{
 			if (_isProcessing)
 				throw new InvalidOperationException("ProcessQueue is already processing.");
@@ -168,7 +196,7 @@ namespace BlueCheese.Core.Utils
 
 		#region Helpers
 
-		public ProcessQueue AddDelay(float seconds, string name = null)
+		public ProcessQueue AddDelay(float seconds)
 		{
 			if (_isProcessing)
 				throw new InvalidOperationException("ProcessQueue is already processing.");
@@ -176,24 +204,24 @@ namespace BlueCheese.Core.Utils
 			if (seconds < 0f)
 				throw new ArgumentOutOfRangeException(nameof(seconds), "Delay must be non-negative.");
 
-			string resolved = name ?? $"Delay {seconds:0.###}s";
+			string resolved = $"Delay {seconds:0.###}s";
 
-			return Enqueue(async (CancellationToken ct) =>
+			return EnqueueAsync(async (CancellationToken ct) =>
 			{
 				int ms = (int)(seconds * 1000f);
 				await UniTask.Delay(ms, cancellationToken: ct);
 			}, resolved);
 		}
 
-		public ProcessQueue AddFrame(string name = "WaitForNextFrame")
+		public ProcessQueue AddFrame()
 		{
 			if (_isProcessing)
 				throw new InvalidOperationException("ProcessQueue is already processing.");
 
-			return Enqueue(async (CancellationToken ct) =>
+			return EnqueueAsync(async (CancellationToken ct) =>
 			{
 				await UniTask.Yield(ct);
-			}, name);
+			}, "WaitForNextFrame");
 		}
 
 		/// <summary>
@@ -245,7 +273,25 @@ namespace BlueCheese.Core.Utils
 					ct.ThrowIfCancellationRequested();
 
 					_processingItem = _items.Dequeue();
-					await _processingItem.InvokeAsync(ct);
+
+					try
+					{
+						await _processingItem.InvokeAsync(ct);
+					}
+					catch (OperationCanceledException)
+					{
+						throw;
+					}
+					catch (Exception ex)
+					{
+						StepFailed?.Invoke(_processedCount, ex);
+
+						if (Behavior == ExceptionBehavior.Cancel)
+						{
+							throw; // Rethrow to stop the loop and let the caller handle the failure
+						}
+						// If Continue, we swallow the exception here (it's already reported via event) and loop
+					}
 
 					_processedCount++;
 					Progressed?.Invoke(Progress);
@@ -264,9 +310,7 @@ namespace BlueCheese.Core.Utils
 
 		public IEnumerator ProcessCoroutine(CancellationToken ct = default)
 		{
-			// Assumes you added a UniTask.ToCoroutine() extension somewhere else, 
-			// or are calling this from a context that understands UniTask.ToCoroutine().
-			// Standard UniTask usage: return ProcessAsync(ct).ToCoroutine();
+			// Assumes you added a UniTask.ToCoroutine() extension somewhere else.
 			return ProcessAsync(ct).ToCoroutine();
 		}
 

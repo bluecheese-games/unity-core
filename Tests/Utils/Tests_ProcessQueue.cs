@@ -28,7 +28,7 @@ public class Tests_ProcessQueue
 		int counter = 0;
 
 		// Act
-		_processQueue.Enqueue(() => counter++);
+		_processQueue.EnqueueAction(() => counter++);
 
 		// Assert
 		Assert.AreEqual(1, _processQueue.Count);
@@ -44,8 +44,8 @@ public class Tests_ProcessQueue
 
 		// Act
 		var result = _processQueue
-			.Enqueue(() => counter++, "Step 1")
-			.Enqueue(() => counter++, "Step 2");
+			.EnqueueAction(() => counter++, "Step 1")
+			.EnqueueAction(() => counter++, "Step 2");
 
 		// Assert
 		Assert.That(result, Is.SameAs(_processQueue));
@@ -59,7 +59,7 @@ public class Tests_ProcessQueue
 		Action action = null;
 
 		// Act & Assert
-		Assert.Throws<ArgumentNullException>(() => _processQueue.Enqueue(action));
+		Assert.Throws<ArgumentNullException>(() => _processQueue.EnqueueAction(action));
 	}
 
 	#endregion
@@ -76,7 +76,7 @@ public class Tests_ProcessQueue
 		};
 
 		// Act
-		_processQueue.Enqueue(asyncAction);
+		_processQueue.EnqueueAsync(asyncAction);
 
 		// Assert
 		Assert.AreEqual(1, _processQueue.Count);
@@ -93,8 +93,8 @@ public class Tests_ProcessQueue
 
 		// Act
 		var result = _processQueue
-			.Enqueue(asyncAction, "Async Step 1")
-			.Enqueue(asyncAction, "Async Step 2");
+			.EnqueueAsync(asyncAction, "Async Step 1")
+			.EnqueueAsync(asyncAction, "Async Step 2");
 
 		// Assert
 		Assert.That(result, Is.SameAs(_processQueue));
@@ -108,7 +108,7 @@ public class Tests_ProcessQueue
 		Action<CancellationToken> action = ct => { /* no-op */ };
 
 		// Act
-		_processQueue.Enqueue(action);
+		_processQueue.EnqueueAction(action);
 
 		// Assert
 		Assert.That(_processQueue.Count, Is.EqualTo(1));
@@ -122,13 +122,13 @@ public class Tests_ProcessQueue
 	public void Enqueue_ShouldThrowInvalidOperationException_IfAlreadyBeingProcessed()
 	{
 		// Arrange
-		_processQueue.Enqueue(() => { });
+		_processQueue.EnqueueAction(() => { });
 
 		// Act
 		var _ = _processQueue.ProcessAsync(); // fire & forget, sets _isProcessing = true
 
 		// Assert
-		Assert.Throws<InvalidOperationException>(() => _processQueue.Enqueue(() => { }));
+		Assert.Throws<InvalidOperationException>(() => _processQueue.EnqueueAction(() => { }));
 	}
 
 	#endregion
@@ -185,13 +185,13 @@ public class Tests_ProcessQueue
 		int counter = 0;
 
 		_processQueue
-			.Enqueue(() => counter++)
-			.Enqueue(async () =>
+			.EnqueueAction(() => counter++)
+			.EnqueueAsync(async () =>
 			{
 				await UniTask.Yield();
 				counter++;
 			})
-			.Enqueue(() => counter++);
+			.EnqueueAction(() => counter++);
 
 		// Act
 		await _processQueue.ProcessAsync();
@@ -212,7 +212,7 @@ public class Tests_ProcessQueue
 	public async void Progress_ShouldGoFromZeroToSomeValue()
 	{
 		// Arrange
-		_processQueue.Enqueue(() => { });
+		_processQueue.EnqueueAction(() => { });
 
 		// Act
 		float before = _processQueue.Progress;
@@ -233,9 +233,9 @@ public class Tests_ProcessQueue
 		float lastProgress = -1f;
 
 		_processQueue
-			.Enqueue(() => { }, "Step 1")
-			.Enqueue(() => { }, "Step 2")
-			.Enqueue(() => { }, "Step 3");
+			.EnqueueAction(() => { }, "Step 1")
+			.EnqueueAction(() => { }, "Step 2")
+			.EnqueueAction(() => { }, "Step 3");
 
 		_processQueue.Progressed += progress =>
 		{
@@ -257,7 +257,7 @@ public class Tests_ProcessQueue
 		// Arrange
 		int completeCount = 0;
 
-		_processQueue.Enqueue(() => { });
+		_processQueue.EnqueueAction(() => { });
 		_processQueue.Complete += () => completeCount++;
 
 		// Act
@@ -279,7 +279,7 @@ public class Tests_ProcessQueue
 
 		_processQueue
 			.AddDelay(0.01f)
-			.Enqueue(() => executedAfterDelay = true);
+			.EnqueueAction(() => executedAfterDelay = true);
 
 		// Act
 		await _processQueue.ProcessAsync();
@@ -296,7 +296,7 @@ public class Tests_ProcessQueue
 
 		_processQueue
 			.AddDelay(0f)
-			.Enqueue(() => executed = true);
+			.EnqueueAction(() => executed = true);
 
 		// Act
 		await _processQueue.ProcessAsync();
@@ -321,7 +321,7 @@ public class Tests_ProcessQueue
 
 		_processQueue
 			.AddFrame()
-			.Enqueue(() => executedAfterFrame = true);
+			.EnqueueAction(() => executedAfterFrame = true);
 
 		// Act
 		await _processQueue.ProcessAsync();
@@ -343,13 +343,13 @@ public class Tests_ProcessQueue
 		var cts = new CancellationTokenSource();
 
 		_processQueue
-			.Enqueue(async ct =>
+			.EnqueueAsync(async ct =>
 			{
 				counter++;
 				cts.Cancel();
 				await UniTask.Yield(ct);
 			}, "Step 1")
-			.Enqueue(ct => counter++, "Step 2");
+			.EnqueueAction(ct => counter++, "Step 2");
 
 		_processQueue.Complete += () => completeCount++;
 
@@ -379,8 +379,8 @@ public class Tests_ProcessQueue
 	{
 		// Arrange
 		_processQueue
-			.Enqueue(() => { })
-			.Enqueue(() => { });
+			.EnqueueAction(() => { })
+			.EnqueueAction(() => { });
 
 		// Act
 		_processQueue.Clear();
@@ -435,7 +435,7 @@ public class Tests_ProcessQueue
 		}
 
 		// Act & Assert
-		Assert.Throws<InvalidOperationException>(() => queue.Enqueue(MyCoroutine));
+		Assert.Throws<InvalidOperationException>(() => queue.EnqueueCoroutine(MyCoroutine));
 	}
 
 	[Test]
@@ -452,7 +452,7 @@ public class Tests_ProcessQueue
 			yield break;
 		}
 
-		queue.Enqueue(MyCoroutine, "My Coroutine");
+		queue.EnqueueCoroutine(MyCoroutine, "My Coroutine");
 
 		// Act
 		await queue.ProcessAsync();
