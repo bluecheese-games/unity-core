@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using BlueCheese.Core.Signals;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
+using System.Threading.Tasks;
 
 namespace BlueCheese.Tests.Signals
 {
@@ -420,7 +421,7 @@ namespace BlueCheese.Tests.Signals
         }
 
         [Test]
-        public async void Test_PublishAsync_OnMainThread()
+        public async Task Test_PublishAsync_OnMainThread()
         {
             GameObject obj = null;
             bool complete = false;
@@ -438,7 +439,7 @@ namespace BlueCheese.Tests.Signals
         }
 
         [Test]
-        public async void Test_PublishAsync()
+        public async Task Test_PublishAsync()
         {
             int value = 0;
             _channel.Subscribe(async (TestSignal signal) =>
@@ -460,7 +461,7 @@ namespace BlueCheese.Tests.Signals
         }
 
         [Test]
-        public async void Test_PublishAsync_WithNonAsyncSubscriber()
+        public async Task Test_PublishAsync_WithNonAsyncSubscriber()
         {
             int value = 0;
             _channel.Subscribe((TestSignal signal) =>
