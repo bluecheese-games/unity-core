@@ -5,6 +5,7 @@
 using System;
 using System.Collections;
 using System.Threading;
+using System.Threading.Tasks;
 using BlueCheese.Core.Utils;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
@@ -136,7 +137,7 @@ public class Tests_ProcessQueue
 	#region ProcessAsync basics
 
 	[Test]
-	public async void ProcessAsync_ShouldThrowInvalidOperationExceptionIfQueueIsEmpty()
+	public async Task ProcessAsync_ShouldThrowInvalidOperationExceptionIfQueueIsEmpty()
 	{
 		// Arrange
 		InvalidOperationException caught = null;
@@ -156,7 +157,7 @@ public class Tests_ProcessQueue
 	}
 
 	[Test]
-	public async void ProcessAsync_ShouldThrowIfAlreadyProcessing()
+	public async Task ProcessAsync_ShouldThrowIfAlreadyProcessing()
 	{
 		// Arrange
 		_processQueue.AddDelay(0.01f); // ensure the first call stays "in progress"
@@ -179,7 +180,7 @@ public class Tests_ProcessQueue
 	}
 
 	[Test]
-	public async void ProcessAsync_ShouldProcessAllItemsInQueue()
+	public async Task ProcessAsync_ShouldProcessAllItemsInQueue()
 	{
 		// Arrange
 		int counter = 0;
@@ -209,7 +210,7 @@ public class Tests_ProcessQueue
 	#region Progress / events
 
 	[Test]
-	public async void Progress_ShouldGoFromZeroToSomeValue()
+	public async Task Progress_ShouldGoFromZeroToSomeValue()
 	{
 		// Arrange
 		_processQueue.EnqueueAction(() => { });
@@ -226,7 +227,7 @@ public class Tests_ProcessQueue
 	}
 
 	[Test]
-	public async void ProgressedEvent_ShouldBeRaisedPerItem()
+	public async Task ProgressedEvent_ShouldBeRaisedPerItem()
 	{
 		// Arrange
 		int progressEventCount = 0;
@@ -252,7 +253,7 @@ public class Tests_ProcessQueue
 	}
 
 	[Test]
-	public async void CompleteEvent_ShouldBeRaisedOnce()
+	public async Task CompleteEvent_ShouldBeRaisedOnce()
 	{
 		// Arrange
 		int completeCount = 0;
@@ -272,7 +273,7 @@ public class Tests_ProcessQueue
 	#region Helper methods: AddDelay / AddFrame
 
 	[Test]
-	public async void AddDelay_ShouldEnqueueDelayStep_AndBeProcessed()
+	public async Task AddDelay_ShouldEnqueueDelayStep_AndBeProcessed()
 	{
 		// Arrange
 		bool executedAfterDelay = false;
@@ -289,7 +290,7 @@ public class Tests_ProcessQueue
 	}
 
 	[Test]
-	public async void AddDelay_WithZero_ShouldStillRunNextStep()
+	public async Task AddDelay_WithZero_ShouldStillRunNextStep()
 	{
 		// Arrange
 		bool executed = false;
@@ -314,7 +315,7 @@ public class Tests_ProcessQueue
 	}
 
 	[Test]
-	public async void AddFrame_ShouldEnqueueFrameStep_AndBeProcessed()
+	public async Task AddFrame_ShouldEnqueueFrameStep_AndBeProcessed()
 	{
 		// Arrange
 		bool executedAfterFrame = false;
@@ -335,7 +336,7 @@ public class Tests_ProcessQueue
 	#region Cancellation
 
 	[Test]
-	public async void ProcessAsync_WhenCancelled_ShouldStopAndNotRaiseComplete()
+	public async Task ProcessAsync_WhenCancelled_ShouldStopAndNotRaiseComplete()
 	{
 		// Arrange
 		int counter = 0;
@@ -439,7 +440,7 @@ public class Tests_ProcessQueue
 	}
 
 	[Test]
-	public async void Enqueue_Coroutine_ShouldRunViaCoroutineRunner()
+	public async Task Enqueue_Coroutine_ShouldRunViaCoroutineRunner()
 	{
 		// Arrange
 		var runner = new TestCoroutineRunner();
