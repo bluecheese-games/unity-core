@@ -2,6 +2,7 @@
 // Copyright (c) 2025 BlueCheese Games All rights reserved
 //
 
+using System;
 using UnityEditor;
 using UnityEngine;
 using BlueCheese.Core.Utils;
@@ -40,52 +41,108 @@ namespace BlueCheese.Core.Editor
 			{
 				StartStackedProcess();
 			}
+
+			GUILayout.Space(10);
+
+			GUILayout.Label("Exception Handling", EditorStyles.boldLabel);
+			GUILayout.BeginHorizontal();
+			if (GUILayout.Button("Exception (Continue)"))
+			{
+				StartExceptionProcess(ExceptionBehavior.Continue);
+			}
+			if (GUILayout.Button("Exception (Cancel)"))
+			{
+				StartExceptionProcess(ExceptionBehavior.Cancel);
+			}
+			GUILayout.EndHorizontal();
+
+			GUILayout.Space(10);
+
+			GUILayout.Label("Manual Start Execution", EditorStyles.boldLabel);
+			if (GUILayout.Button("Open Manual Process"))
+			{
+				StartManualProcess();
+			}
 		}
 
 		private void StartMyProcess(bool autoClose)
 		{
-			var queue = new ProcessQueue();
+			var queue = CreateDemoQueue();
 
-			// Build the queue
-			queue.Enqueue(() => Debug.Log("Validating Assets..."), "Validate Assets")
-				 .AddDelay(0.5f, "Checking Database")
-				 .Enqueue(async (ct) =>
-				 {
-					 // Simulate heavier work
-					 await UniTask.Delay(1000, cancellationToken: ct);
-				 }, "Download Remote Config")
-				 .AddDelay(0.5f, "Parsing JSON")
-				 .Enqueue(() => Debug.Log("Processing..."), "Baking Data")
-				 .AddDelay(1.5f, "Finalizing")
-				 .Enqueue(() => Debug.Log("Done!"), "Save to Disk");
-
-			// Launch the generic visualizer
-			ProcessQueueWindow.Process(queue, "Asset Import Pipeline", () =>
+			// Launch with default autoStart = true
+			ProcessQueueWindow.Open(queue, "Asset Import Pipeline", () =>
 			{
 				Debug.Log("Pipeline finished successfully!");
-			}, autoClose);
+			}, autoClose, autoStart: true);
+		}
+
+		private void StartManualProcess()
+		{
+			var queue = CreateDemoQueue();
+
+			// Launch with autoStart = false
+			ProcessQueueWindow.Open(queue, "Manual Pipeline", () =>
+			{
+				Debug.Log("Manual Pipeline finished!");
+			}, autoClose: false, autoStart: false);
+		}
+
+		private ProcessQueue CreateDemoQueue()
+		{
+			var queue = new ProcessQueue();
+			queue.EnqueueAction(() => Debug.Log("Validating Assets..."), "Validate Assets")
+				 .AddDelay(0.5f)
+				 .EnqueueAsync(async (ct) =>
+				 {
+					 await UniTask.Delay(1000, cancellationToken: ct);
+				 }, "Download Remote Config")
+				 .AddDelay(0.5f)
+				 .EnqueueAction(() => Debug.Log("Processing..."), "Baking Data")
+				 .AddDelay(1.5f)
+				 .EnqueueAction(() => Debug.Log("Done!"), "Save to Disk");
+			return queue;
 		}
 
 		private void StartStackedProcess()
 		{
 			var queue = new ProcessQueue();
 
-			queue.Enqueue(() => Debug.Log("Init"), "Initialization");
+			queue.EnqueueAction(() => Debug.Log("Init"), "Initialization");
 
-			// Add multiple items with same name to demonstrate stacking
 			for (int i = 0; i < 20; i++)
 			{
-				// Local copy for closure, though not strictly needed since we don't use 'i' inside
-				queue.Enqueue(async (ct) =>
+				queue.EnqueueAsync(async (ct) =>
 				{
-					// Simulate fast work (100ms)
 					await UniTask.Delay(100, cancellationToken: ct);
 				}, "Batch Processing");
 			}
 
-			queue.AddDelay(0.5f, "Cleanup");
+			queue.AddDelay(0.5f);
 
-			ProcessQueueWindow.Process(queue, "Stacked Task Demo");
+			ProcessQueueWindow.Open(queue, "Stacked Task Demo", autoStart: true);
+		}
+
+		private void StartExceptionProcess(ExceptionBehavior behavior)
+		{
+			var queue = new ProcessQueue();
+			queue.Behavior = behavior;
+
+			queue.EnqueueAction(() => Debug.Log("Preparing..."), "Preparation");
+			queue.AddDelay(0.5f);
+
+			// Task 1: Success
+			queue.EnqueueAsync(async (ct) => { await UniTask.Delay(500, cancellationToken: ct); }, "Task A (Success)");
+
+			// Task 2: Fails
+			queue.EnqueueAction(() =>
+			{
+				throw new Exception("Something went terribly wrong in Task B!");
+			}, "Task B (Fails)");
+
+			// Task 3: Success (only runs if Continue)
+			queue.EnqueueAsync(async (ct) => { await UniTask.Delay(500, cancellationToken: ct); }, "Task C (Success)");
+
+			ProcessQueueWindow.Open(queue, $"Exception Demo ({behavior})", autoStart: true);
 		}
 	}
 }
