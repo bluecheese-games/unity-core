@@ -2,11 +2,12 @@
 // Copyright (c) 2025 BlueCheese Games All rights reserved
 //
 
-using System;
-using UnityEditor;
-using UnityEngine;
 using BlueCheese.Core.Utils;
 using Cysharp.Threading.Tasks;
+using System;
+using System.Threading;
+using UnityEditor;
+using UnityEngine;
 
 namespace BlueCheese.Core.Editor
 {
@@ -55,6 +56,14 @@ namespace BlueCheese.Core.Editor
 				StartExceptionProcess(ExceptionBehavior.Cancel);
 			}
 			GUILayout.EndHorizontal();
+
+			GUILayout.Space(10);
+
+			GUILayout.Label("Parallel Execution", EditorStyles.boldLabel);
+			if (GUILayout.Button("Start Parallel Demo"))
+			{
+				StartParallelProcess();
+			}
 
 			GUILayout.Space(10);
 
@@ -143,6 +152,33 @@ namespace BlueCheese.Core.Editor
 			queue.EnqueueAsync(async (ct) => { await UniTask.Delay(500, cancellationToken: ct); }, "Task C (Success)");
 
 			ProcessQueueWindow.Open(queue, $"Exception Demo ({behavior})", autoStart: true);
+		}
+
+		private void StartParallelProcess()
+		{
+			var queue = new ProcessQueue();
+			queue.EnqueueAction(() => Debug.Log("Init Parallel..."), "Initialization");
+
+			// Create 5 concurrent tasks with names
+			var parallelTasks = new (string, Func<CancellationToken, UniTask>)[5];
+			for (int i = 0; i < 5; i++)
+			{
+				int id = i;
+				parallelTasks[i] = ($"Parallel Job {id + 1}", async (ct) =>
+				{
+					// Variable delay to show they finish independently
+					int delay = UnityEngine.Random.Range(500, 3000);
+					await UniTask.Delay(delay, cancellationToken: ct);
+					Debug.Log($"Parallel Task {id} finished after {delay}ms");
+				}
+				);
+			}
+
+			queue.EnqueueParallel("Download Items (Parallel)", parallelTasks);
+			queue.AddDelay(0.5f);
+			queue.EnqueueAction(() => Debug.Log("Done"), "Finish");
+
+			ProcessQueueWindow.Open(queue, "Parallel Execution Demo", autoStart: true);
 		}
 	}
 }
