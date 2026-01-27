@@ -5,6 +5,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 
@@ -24,6 +25,23 @@ namespace BlueCheese.Core.Utils
 		/// Stop processing and propagate the exception (cancelling the queue).
 		/// </summary>
 		Cancel
+	}
+
+	/// <summary>
+	/// Represents a snapshot of a step in the queue for visualization.
+	/// </summary>
+	public readonly struct QueueStep
+	{
+		public readonly string Name;
+		public readonly bool IsParallel;
+		public readonly string[] SubStepNames;
+
+		public QueueStep(string name, bool isParallel, string[] subStepNames = null)
+		{
+			Name = name;
+			IsParallel = isParallel;
+			SubStepNames = subStepNames;
+		}
 	}
 
 	/// <summary>
@@ -92,104 +110,109 @@ namespace BlueCheese.Core.Utils
 		/// </summary>
 		public event Action<int, Exception> StepFailed;
 
+		/// <summary>
+		/// Fired when a sub-task within a parallel step finishes.
+		/// Arguments: Main Step Index, Sub Task Index.
+		/// </summary>
+		public event Action<int, int> ParallelSubProgress;
+
 		#region Enqueue overloads
 
-		/// <summary>
-		/// Enqueue a synchronous action (fluent).
-		/// </summary>
 		public ProcessQueue EnqueueAction(Action action, string name = null)
 		{
-			if (_isProcessing)
-				throw new InvalidOperationException("ProcessQueue is already processing.");
-
-			if (action == null)
-				throw new ArgumentNullException(nameof(action));
+			CheckProcessing();
+			if (action == null) throw new ArgumentNullException(nameof(action));
 
 			name ??= action.Method.Name;
-			_items.Enqueue(new Item(name: name, action: action));
+			_items.Enqueue(new Item(name, action: action));
 			return this;
 		}
 
-		/// <summary>
-		/// Enqueue an async action that takes a CancellationToken.
-		/// </summary>
 		public ProcessQueue EnqueueAsync(Func<CancellationToken, UniTask> asyncAction, string name = null)
 		{
-			if (_isProcessing)
-				throw new InvalidOperationException("ProcessQueue is already processing.");
-
-			if (asyncAction == null)
-				throw new ArgumentNullException(nameof(asyncAction));
+			CheckProcessing();
+			if (asyncAction == null) throw new ArgumentNullException(nameof(asyncAction));
 
 			name ??= asyncAction.Method.Name;
-			_items.Enqueue(new Item(name: name, asyncAction: asyncAction));
+			_items.Enqueue(new Item(name, asyncAction: asyncAction));
 			return this;
 		}
 
-		/// <summary>
-		/// Enqueue an async action with no token (fluent).
-		/// The queue will still honor cancellation between steps.
-		/// </summary>
 		public ProcessQueue EnqueueAsync(Func<UniTask> asyncAction, string name = null)
 		{
-			if (asyncAction == null)
-				throw new ArgumentNullException(nameof(asyncAction));
-
-			// Adapt to token-aware version.
-			Func<CancellationToken, UniTask> wrapped = _ => asyncAction();
-			return EnqueueAsync(wrapped, name ?? asyncAction.Method.Name);
+			if (asyncAction == null) throw new ArgumentNullException(nameof(asyncAction));
+			return EnqueueAsync(_ => asyncAction(), name ?? asyncAction.Method.Name);
 		}
 
-		/// <summary>
-		/// Enqueue a token-aware synchronous action (fluent).
-		/// </summary>
 		public ProcessQueue EnqueueAction(Action<CancellationToken> action, string name = null)
 		{
-			if (_isProcessing)
-				throw new InvalidOperationException("ProcessQueue is already processing.");
-
-			if (action == null)
-				throw new ArgumentNullException(nameof(action));
+			CheckProcessing();
+			if (action == null) throw new ArgumentNullException(nameof(action));
 
 			Func<CancellationToken, UniTask> wrapped = ct =>
 			{
 				action(ct);
 				return UniTask.Yield(ct);
 			};
+			return EnqueueAsync(wrapped, name ?? action.Method.Name);
+		}
 
-			name ??= action.Method.Name;
-			_items.Enqueue(new Item(name: name, asyncAction: wrapped));
+		public ProcessQueue EnqueueCoroutine(Func<IEnumerator> coroutineFactory, string name = null)
+		{
+			CheckProcessing();
+			if (coroutineFactory == null) throw new ArgumentNullException(nameof(coroutineFactory));
+			if (_coroutineRunner == null) throw new InvalidOperationException("No ICoroutineRunner provided.");
+
+			Func<CancellationToken, UniTask> asyncWrapper = async _ =>
+			{
+				await _coroutineRunner.RunCoroutineAsync(coroutineFactory());
+			};
+
+			_items.Enqueue(new Item(name ?? coroutineFactory.Method.Name, asyncAction: asyncWrapper));
 			return this;
 		}
 
 		/// <summary>
-		/// Enqueue a coroutine factory (Func&lt;IEnumerator&gt;).
-		/// Requires a non-null ICoroutineRunner passed in the constructor.
+		/// Enqueue multiple named async tasks to run concurrently.
+		/// This step completes only when ALL tasks are complete.
 		/// </summary>
-		public ProcessQueue EnqueueCoroutine(Func<IEnumerator> coroutineFactory, string name = null)
+		public ProcessQueue EnqueueParallel(string name, params (string taskName, Func<CancellationToken, UniTask> task)[] tasks)
+		{
+			CheckProcessing();
+			if (tasks == null || tasks.Length == 0)
+				throw new ArgumentException("Parallel tasks list cannot be empty", nameof(tasks));
+
+			string[] subNames = tasks.Select(t => t.taskName).ToArray();
+
+			Func<CancellationToken, UniTask> parallelWrapper = async (ct) =>
+			{
+				int mainIndex = _processedCount; // Capture current index
+
+				// Create wrappers that fire completion events
+				var runningTasks = new List<UniTask>(tasks.Length);
+				for (int i = 0; i < tasks.Length; i++)
+				{
+					int subIndex = i;
+					var t = tasks[i].task;
+
+					runningTasks.Add(UniTask.Create(async () =>
+					{
+						await t(ct);
+						ParallelSubProgress?.Invoke(mainIndex, subIndex);
+					}));
+				}
+
+				await UniTask.WhenAll(runningTasks);
+			};
+
+			_items.Enqueue(new Item(name, asyncAction: parallelWrapper, isParallel: true, subStepNames: subNames));
+			return this;
+		}
+
+		private void CheckProcessing()
 		{
 			if (_isProcessing)
 				throw new InvalidOperationException("ProcessQueue is already processing.");
-
-			if (coroutineFactory == null)
-				throw new ArgumentNullException(nameof(coroutineFactory));
-
-			if (_coroutineRunner == null)
-			{
-				throw new InvalidOperationException(
-					"No ICoroutineRunner provided. Pass one to the ProcessQueue constructor to use coroutine enqueueing."
-				);
-			}
-
-			Func<CancellationToken, UniTask> asyncWrapper = async _ =>
-			{
-				var coroutine = coroutineFactory();
-				await _coroutineRunner.RunCoroutineAsync(coroutine);
-			};
-
-			name ??= coroutineFactory.Method.Name;
-			_items.Enqueue(new Item(name: name, asyncAction: asyncWrapper));
-			return this;
 		}
 
 		#endregion
@@ -198,52 +221,32 @@ namespace BlueCheese.Core.Utils
 
 		public ProcessQueue AddDelay(float seconds)
 		{
-			if (_isProcessing)
-				throw new InvalidOperationException("ProcessQueue is already processing.");
+			CheckProcessing();
+			if (seconds < 0f) throw new ArgumentOutOfRangeException(nameof(seconds));
 
-			if (seconds < 0f)
-				throw new ArgumentOutOfRangeException(nameof(seconds), "Delay must be non-negative.");
-
-			string resolved = $"Delay {seconds:0.###}s";
-
-			return EnqueueAsync(async (CancellationToken ct) =>
+			return EnqueueAsync(async (ct) =>
 			{
-				int ms = (int)(seconds * 1000f);
-				await UniTask.Delay(ms, cancellationToken: ct);
-			}, resolved);
+				await UniTask.Delay((int)(seconds * 1000f), cancellationToken: ct);
+			}, $"Delay {seconds:0.###}s");
 		}
 
 		public ProcessQueue AddFrame()
 		{
-			if (_isProcessing)
-				throw new InvalidOperationException("ProcessQueue is already processing.");
-
-			return EnqueueAsync(async (CancellationToken ct) =>
-			{
-				await UniTask.Yield(ct);
-			}, "WaitForNextFrame");
+			CheckProcessing();
+			return EnqueueAsync(async (ct) => await UniTask.Yield(ct), "WaitForNextFrame");
 		}
 
-		/// <summary>
-		/// Returns a list of the names of items currently in the queue.
-		/// Useful for UI visualization before or during processing.
-		/// </summary>
-		public IEnumerable<string> GetPendingStepNames()
+		public IEnumerable<QueueStep> GetPendingSteps()
 		{
 			foreach (var item in _items)
 			{
-				yield return item.Name;
+				yield return new QueueStep(item.Name, item.IsParallel, item.SubStepNames);
 			}
 		}
 
-		/// <summary>
-		/// Clear all queued items and reset internal counters.
-		/// </summary>
 		public void Clear()
 		{
-			if (_isProcessing)
-				throw new InvalidOperationException("Cannot clear the queue while it is processing.");
-
+			CheckProcessing();
 			_items.Clear();
 			_processedCount = 0;
 			_totalCountForRun = 0;
@@ -256,11 +259,8 @@ namespace BlueCheese.Core.Utils
 
 		public async UniTask ProcessAsync(CancellationToken ct = default)
 		{
-			if (_isProcessing)
-				throw new InvalidOperationException("ProcessQueue is already processing.");
-
-			if (_items.Count == 0)
-				throw new InvalidOperationException("The process queue is empty.");
+			CheckProcessing();
+			if (_items.Count == 0) throw new InvalidOperationException("The process queue is empty.");
 
 			_isProcessing = true;
 			_processedCount = 0;
@@ -286,11 +286,7 @@ namespace BlueCheese.Core.Utils
 					{
 						StepFailed?.Invoke(_processedCount, ex);
 
-						if (Behavior == ExceptionBehavior.Cancel)
-						{
-							throw; // Rethrow to stop the loop and let the caller handle the failure
-						}
-						// If Continue, we swallow the exception here (it's already reported via event) and loop
+						if (Behavior == ExceptionBehavior.Cancel) throw;
 					}
 
 					_processedCount++;
@@ -310,7 +306,6 @@ namespace BlueCheese.Core.Utils
 
 		public IEnumerator ProcessCoroutine(CancellationToken ct = default)
 		{
-			// Assumes you added a UniTask.ToCoroutine() extension somewhere else.
 			return ProcessAsync(ct).ToCoroutine();
 		}
 
@@ -321,12 +316,16 @@ namespace BlueCheese.Core.Utils
 		private readonly struct Item
 		{
 			public readonly string Name;
+			public readonly bool IsParallel;
+			public readonly string[] SubStepNames;
 			private readonly Action _action;
 			private readonly Func<CancellationToken, UniTask> _asyncAction;
 
-			public Item(string name, Action action = null, Func<CancellationToken, UniTask> asyncAction = null)
+			public Item(string name, Action action = null, Func<CancellationToken, UniTask> asyncAction = null, bool isParallel = false, string[] subStepNames = null)
 			{
 				Name = name;
+				IsParallel = isParallel;
+				SubStepNames = subStepNames;
 				_action = action;
 				_asyncAction = asyncAction;
 			}
@@ -338,12 +337,10 @@ namespace BlueCheese.Core.Utils
 					_action.Invoke();
 					return UniTask.Yield(ct);
 				}
-
 				if (_asyncAction != null)
 				{
 					return _asyncAction(ct);
 				}
-
 				throw new InvalidOperationException("Item has no action to invoke.");
 			}
 		}
