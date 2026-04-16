@@ -9,7 +9,7 @@ namespace BlueCheese.Core
 	public static class DateTimeExtensions
 	{
 		public static string TimeAgo(this DateTime dateTime)
-			=> (DateTime.UtcNow - dateTime.ToUniversalTime()).TimeAgo();
+			=> (DateTime.Now - dateTime.ToLocalTime()).TimeAgo();
 
 		public static string TimeAgo(this TimeSpan ts)
 		{
