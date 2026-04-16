@@ -6,17 +6,42 @@ using UnityEngine;
 
 namespace BlueCheese.Core.Utils
 {
-	public class AssetBase : ScriptableObject
+	public abstract class AssetBase : ScriptableObject
 	{
 		[HideInInspector] public string Name = string.Empty;
 		[HideInInspector] public Tags Tags = new();
 		[HideInInspector] public bool RegisterInAssetBank = true;
 		[HideInInspector] public AssetLoadMode LoadMode = AssetLoadMode.Resources;
 
-#if UNITY_EDITOR
-		public string Guid => UnityEditor.AssetDatabase.AssetPathToGUID(UnityEditor.AssetDatabase.GetAssetPath(this));
+		private string _guid;
+		private string _typeName;
 
-		public string TypeName => this.GetType().AssemblyQualifiedName;
+#if UNITY_EDITOR
+		public string Guid
+		{
+			get
+			{
+				if (!string.IsNullOrEmpty(_guid))
+				{
+					return _guid;
+				}
+				_guid = UnityEditor.AssetDatabase.AssetPathToGUID(UnityEditor.AssetDatabase.GetAssetPath(this));
+				return _guid;
+			}
+		}
+
+		public string TypeName
+		{
+			get
+			{
+				if (!string.IsNullOrEmpty(_typeName))
+				{
+					return _typeName;
+				}
+				_typeName = GetType().AssemblyQualifiedName;
+				return _typeName;
+			}
+		}
 
 		protected void OnValidate()
 		{
@@ -26,6 +51,9 @@ namespace BlueCheese.Core.Utils
 			}
 		}
 
+		/// <summary>
+		/// Called when the asset is registered in the AssetBank.
+		/// </summary>
 		public virtual void OnRegister() { }
 #endif
 	}
