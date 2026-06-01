@@ -73,8 +73,6 @@ namespace BlueCheese.Core.Editor
 					string fsPath = AssetPathToFullPath(destFolder);
 					if (!string.IsNullOrEmpty(fsPath) && Directory.Exists(fsPath))
 						Directory.Delete(fsPath, true);
-
-					AssetDatabase.Refresh();
 				}
 
 				AssetDatabase.Refresh();

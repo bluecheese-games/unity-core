@@ -46,8 +46,9 @@ namespace BlueCheese.Core.Editor
 
 			// Regenerate the assets in the bank
 			var sw = System.Diagnostics.Stopwatch.StartNew();
-			var assets = FindAssets();
+			var assets = FindAssets().ToList();
 			bank.Feed(assets);
+			ConfigureAddressables(assets);
 			Debug.Log($"Regenerated AssetBank in {sw.ElapsedMilliseconds}ms");
 
 			DevMetricRecorder.Record("AssetBank Regen", sw.Elapsed.TotalSeconds);
@@ -57,7 +58,36 @@ namespace BlueCheese.Core.Editor
 			AssetDatabase.FindAssets($"t:{nameof(AssetBase)}")
 				.Select(AssetDatabase.GUIDToAssetPath)
 				.Select(AssetDatabase.LoadAssetAtPath<AssetBase>)
-				.Where(asset => asset.RegisterInAssetBank)
+				.Where(asset => asset != null && asset.RegisterInAssetBank)
 				.OrderBy(asset => asset.Name);
+
+		// Ensures every Addressables asset is registered in the Addressables system with its GUID as address.
+		// No-op when the UNITY_ADDRESSABLES symbol is not defined.
+		private static void ConfigureAddressables(IEnumerable<AssetBase> assets)
+		{
+#if UNITY_ADDRESSABLES
+			var settings = UnityEditor.AddressableAssets.AddressableAssetSettingsDefaultObject.Settings;
+			if (settings == null) return;
+
+			foreach (var asset in assets)
+			{
+				if (asset.LoadMode != BlueCheese.Core.Utils.AssetLoadMode.Addressables) continue;
+
+				string guid = asset.Guid;
+				var entry = settings.FindAssetEntry(guid);
+				if (entry == null)
+					entry = settings.CreateOrMoveEntry(guid, settings.DefaultGroup, postEvent: false);
+
+				// Use the GUID as the address so AssetBaseRef can load by GUID at runtime.
+				if (entry.address != guid)
+				{
+					entry.address = guid;
+					UnityEditor.EditorUtility.SetDirty(settings);
+				}
+			}
+
+			UnityEditor.AssetDatabase.SaveAssets();
+#endif
+		}
 	}
 }
