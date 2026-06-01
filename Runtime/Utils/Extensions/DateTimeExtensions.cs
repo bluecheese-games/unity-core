@@ -8,8 +8,8 @@ namespace BlueCheese.Core
 {
 	public static class DateTimeExtensions
 	{
-		public static string TimeAgo(this DateTime dateTime)
-			=> (DateTime.Now - dateTime.ToLocalTime()).TimeAgo();
+		public static string TimeAgo(this DateTimeOffset dateTime)
+			=> (DateTimeOffset.UtcNow - dateTime).TimeAgo();
 
 		public static string TimeAgo(this TimeSpan ts)
 		{
