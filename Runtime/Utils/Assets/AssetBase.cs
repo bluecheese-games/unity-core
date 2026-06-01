@@ -17,6 +17,9 @@ namespace BlueCheese.Core.Utils
 		private string _typeName;
 
 #if UNITY_EDITOR
+		/// <summary>
+		/// The asset's GUID as assigned by the AssetDatabase. Available in Editor only.
+		/// </summary>
 		public string Guid
 		{
 			get
@@ -30,6 +33,9 @@ namespace BlueCheese.Core.Utils
 			}
 		}
 
+		/// <summary>
+		/// The assembly-qualified name of the concrete type. Used to serialize type information into <see cref="AssetBaseRef"/>. Available in Editor only.
+		/// </summary>
 		public string TypeName
 		{
 			get

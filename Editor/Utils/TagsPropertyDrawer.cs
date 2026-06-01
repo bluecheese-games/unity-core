@@ -10,194 +10,331 @@ using UnityEngine;
 
 namespace BlueCheese.Core.Editor
 {
+	/// <summary>
+	/// Custom Inspector drawer for <see cref="Tags"/>.
+	/// Displays tags as colored chips with a delete button each.
+	/// The input row lets the user type a new tag (Enter to confirm) or pick an existing
+	/// one via the dropdown button, which also filters by whatever is already typed.
+	/// </summary>
 	[CustomPropertyDrawer(typeof(Tags))]
 	public class TagsPropertyDrawer : PropertyDrawer
 	{
-		private string _newTag = "";
-		private GUIStyle _tagStyle;
-		private List<List<TagLabel>> _labels;
-		private float _maxWidth;
+		// ── Constants ────────────────────────────────────────────────────────
+
+		private const float ChipSpacingX  = 4f;
+		private const float LineSpacingY  = 2f;
+		private const float DeleteBtnW    = 14f;
+		private const float PickerBtnW    = 22f;
+		private const float MinChipWidth  = 48f;
+
+		// ── Shared styles (lazy, static — valid after skin is loaded) ────────
+
+		private static GUIStyle _chipStyle;
+		private static GUIStyle _placeholderStyle;
+
+		private static void EnsureStyles()
+		{
+			if (_chipStyle != null) return;
+
+			_chipStyle = new GUIStyle(EditorStyles.miniButton)
+			{
+				alignment  = TextAnchor.MiddleLeft,
+				fontStyle  = FontStyle.Normal,
+				fontSize   = 11,
+				// right padding leaves room for the delete overlay
+				padding    = new RectOffset(6, (int)DeleteBtnW + 4, 1, 1),
+				margin     = new RectOffset(0, 0, 0, 0),
+				fixedHeight = 0,
+			};
+
+			_placeholderStyle = new GUIStyle(EditorStyles.label)
+			{
+				normal = { textColor = new Color(0.5f, 0.5f, 0.5f, 0.6f) },
+				padding = new RectOffset(3, 0, 1, 0),
+			};
+		}
+
+		// ── Per-property-path state (instance is shared across all Tags fields) ──
+
+		// text currently in the "add tag" input, keyed by property path
+		private static readonly Dictionary<string, string> _inputs = new();
+
+		// chip row layout cache, keyed by property path
+		private static readonly Dictionary<string, (float contentWidth, List<List<ChipInfo>> rows)> _layouts = new();
+
+		// ── PropertyDrawer API ───────────────────────────────────────────────
 
 		public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
 		{
-			if( _labels != null)
-			{
-				return _labels.Count * (EditorGUIUtility.singleLineHeight + 2);
-			}
-			return EditorGUIUtility.singleLineHeight;
+			EnsureStyles();
+			var tagsProperty = property.FindPropertyRelative("_values");
+			// Use approximation before the first OnGUI sets an exact width
+			float contentWidth = Mathf.Max(1f, EditorGUIUtility.currentViewWidth - EditorGUIUtility.labelWidth - 22f);
+			int chipRowCount = GetOrBuildLayout(property.propertyPath, tagsProperty, contentWidth).Count;
+
+			float lineH   = EditorGUIUtility.singleLineHeight;
+			bool editable = GUI.enabled;
+			// Read-only: only chip rows (minimum 1 line for the label).
+			// Editable: chip rows + 1 input row.
+			int totalRows = editable ? chipRowCount + 1 : Mathf.Max(chipRowCount, 1);
+			return totalRows * (lineH + LineSpacingY) - LineSpacingY;
 		}
 
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
-			if (_tagStyle == null)
-			{
-				_tagStyle = new(EditorStyles.miniButton)
-				{
-					alignment = TextAnchor.MiddleLeft,
-					fontStyle = FontStyle.Bold
-				};
-			}
-
-			Tags tags = (Tags)property.boxedValue;
+			EnsureStyles();
+			EditorGUI.BeginProperty(position, label, property);
 
 			var tagsProperty = property.FindPropertyRelative("_values");
+			Tags tags         = (Tags)property.boxedValue;
+			string path       = property.propertyPath;
+			float lineH       = EditorGUIUtility.singleLineHeight;
+			float labelW      = EditorGUIUtility.labelWidth;
+			float contentW    = position.width - labelW;
 
-			float maxWidth = position.width;
-			if (maxWidth > 10 && maxWidth != _maxWidth)
+			// Rebuild layout when the content width changes
+			var rows = GetOrBuildLayout(path, tagsProperty, contentW);
+
+			var cursor     = new Rect(position.x, position.y, position.width, lineH);
+			bool labelDrawn  = false;
+			bool needRebuild = false;
+
+			// ── Chip rows ─────────────────────────────────────────────────────
+			foreach (var row in rows)
 			{
-				_labels = null;
-				_maxWidth = maxWidth;
+				if (!labelDrawn)
+				{
+					EditorGUI.LabelField(new Rect(cursor.x, cursor.y, labelW, lineH), label);
+					labelDrawn = true;
+				}
+
+				float chipX = cursor.x + labelW;
+				foreach (var chip in row)
+				{
+					DrawChip(chip, chipX, cursor.y, lineH, tagsProperty, ref needRebuild);
+					chipX += chip.Width + ChipSpacingX;
+				}
+
+				cursor.y += lineH + LineSpacingY;
 			}
 
-			if (maxWidth > 10 && _labels == null)
+			if (needRebuild)
 			{
-				_labels = CreateLabels(maxWidth, tagsProperty);
+				_layouts.Remove(path);
+				EditorGUI.EndProperty();
+				return;
 			}
 
-			if (_labels != null && _labels.Count > 0)
+			// ── Input row (editable only) ──────────────────────────────────────
+			if (!GUI.enabled)
 			{
-				bool removed = false;
-				Rect pos = position;
-				pos.y += 2;
-				foreach (var row in _labels)
-				{
-					foreach (var tagLabel in row)
-					{
-						GUI.backgroundColor = tagLabel.GetColor();
-						pos.width = tagLabel.width;
-						pos.height = EditorGUIUtility.singleLineHeight;
-						GUI.Label(pos, tagLabel.tag, _tagStyle);
-						var rect = pos;
-						rect.xMin = rect.xMax - 13;
-						rect.yMin += 3;
-						GUI.contentColor = Color.gray;
-						if (GUI.enabled && GUI.Button(rect, EditorIcon.Cross, GUIStyle.none))
-						{
-							tagsProperty.DeleteArrayElementAtIndex(tagLabel.index);
-							removed = true;
-						}
-						pos.x += tagLabel.width + 2;
-						GUI.contentColor = Color.white;
-					}
-					pos.x = position.x;
-					pos.y += EditorGUIUtility.singleLineHeight + 2;
-					GUI.backgroundColor = Color.white;
-				}
-				if (removed)
-				{
-					_labels = null;
-				}
+				if (!labelDrawn)
+					EditorGUI.LabelField(new Rect(cursor.x, cursor.y, labelW, lineH), label);
+				EditorGUI.EndProperty();
+				return;
+			}
+			if (!labelDrawn)
+			{
+				EditorGUI.LabelField(new Rect(cursor.x, cursor.y, labelW, lineH), label);
 			}
 
-			/*float totalWidth = 0;
-			for (int i = 0; i < tagsProperty.arraySize; i++)
+			float inputX = cursor.x + labelW;
+			float inputW = cursor.xMax - inputX - PickerBtnW - ChipSpacingX;
+			var inputRect  = new Rect(inputX, cursor.y, inputW, lineH);
+			var pickerRect = new Rect(inputRect.xMax + ChipSpacingX, cursor.y, PickerBtnW, lineH);
+
+			// Text field
+			if (!_inputs.TryGetValue(path, out string inputText))
+				inputText = "";
+
+			string controlName = "TagInput_" + path;
+			GUI.SetNextControlName(controlName);
+			string newInput = EditorGUI.TextField(inputRect, inputText);
+
+			// Placeholder overlay when field is empty and unfocused
+			if (string.IsNullOrEmpty(inputText) && GUI.GetNameOfFocusedControl() != controlName)
+				GUI.Label(inputRect, "Add tag…", _placeholderStyle);
+
+			if (newInput != inputText)
 			{
-				var tagProperty = tagsProperty.GetArrayElementAtIndex(i);
-				float width = _tagStyle.CalcSize(new GUIContent(tagProperty.stringValue)).x + 15;
-				Debug.Log($"tagProperty.stringValue: {tagProperty.stringValue} width: {width}");
+				inputText = newInput;
+				_inputs[path] = inputText;
+			}
 
-				if (maxWidth > 0 && totalWidth + width > maxWidth)
-				{
-					EditorGUILayout.EndHorizontal();
-					EditorGUILayout.BeginHorizontal();
-					EditorGUILayout.PrefixLabel(" ");
-					totalWidth = 0;
-					maxWidth = position.width - 100;
-					width = _tagStyle.CalcSize(new GUIContent(tagProperty.stringValue)).x + 15;
-				}
+			string trimmed = inputText?.Trim() ?? "";
+			bool canAdd    = !string.IsNullOrEmpty(trimmed) && !tags.Contains(trimmed);
 
-				totalWidth += width;
-				Debug.Log($"width: {width}, totalWidth: {totalWidth}, maxWidth: {maxWidth}");
+			// Enter key → commit typed tag
+			if (GUI.GetNameOfFocusedControl() == controlName
+				&& canAdd
+				&& Event.current.type == EventType.KeyDown
+				&& Event.current.keyCode == KeyCode.Return)
+			{
+				CommitTag(tagsProperty, trimmed, path);
+				_inputs[path] = "";
+				Event.current.Use();
+			}
 
-				GUI.backgroundColor = GetColor(tagProperty.stringValue);
-				GUILayout.Label(tagProperty.stringValue, _tagStyle, GUILayout.Width(width));
-				var rect = GUILayoutUtility.GetLastRect();
-				rect.xMin = rect.xMax - 13;
-				rect.yMin += 3;
-				GUI.contentColor = Color.gray;
-				if (GUI.Button(rect, EditorIcon.Cross, GUIStyle.none))
-				{
-					tagsProperty.DeleteArrayElementAtIndex(i);
-				}
-				GUI.contentColor = Color.white;
-			}*/
-			//GUI.backgroundColor = Color.white;
-			//EditorGUILayout.EndHorizontal();
+			// Picker button → dropdown with existing tags filtered by current input
+			var pickerContent = new GUIContent(EditorIcon.Plus, "Add typed tag or pick an existing one");
+			if (GUI.Button(pickerRect, pickerContent, EditorStyles.miniButton))
+				ShowPickerMenu(tagsProperty, tags, path, trimmed);
+
+			EditorGUI.EndProperty();
+		}
+
+		// ── Drawing ───────────────────────────────────────────────────────────
+
+		private static void DrawChip(in ChipInfo chip, float x, float y, float lineH,
+			SerializedProperty tagsProperty, ref bool needRebuild)
+		{
+			var chipRect = new Rect(x, y, chip.Width, lineH);
+
+			GUI.backgroundColor = chip.Color;
+			GUI.Label(chipRect, chip.Tag, _chipStyle);
+			GUI.backgroundColor = Color.white;
+
+			// Delete button, overlaid on the chip's right side (editable mode only)
 			if (GUI.enabled)
 			{
-				EditorGUILayout.BeginHorizontal();
-				EditorGUILayout.PrefixLabel("Add Tag");
-				_newTag = EditorGUILayout.TextField(_newTag);
-				bool submit = Event.current.type == EventType.KeyUp && Event.current.keyCode == KeyCode.Return;
-				bool tagIsValid = !string.IsNullOrEmpty(_newTag) && !tags.Contains(_newTag);
-				GUI.enabled = tagIsValid;
-				if ((submit || GUILayout.Button(EditorIcon.Plus, EditorStyles.miniButton)) && tagIsValid)
+				var delRect = new Rect(chipRect.xMax - DeleteBtnW - 1f, chipRect.y + 3f, DeleteBtnW - 2f, lineH - 6f);
+				Color prevContent = GUI.contentColor;
+				GUI.contentColor  = new Color(0.15f, 0.15f, 0.15f, 0.85f);
+				if (GUI.Button(delRect, EditorIcon.Cross, GUIStyle.none))
 				{
-					tagsProperty.arraySize++;
-					tagsProperty.GetArrayElementAtIndex(tagsProperty.arraySize - 1).stringValue = _newTag;
-					_newTag = "";
-					_labels = null;
+					tagsProperty.DeleteArrayElementAtIndex(chip.Index);
+					needRebuild = true;
 				}
-				GUI.enabled = true;
-				EditorGUILayout.EndHorizontal();
+				GUI.contentColor = prevContent;
 			}
 		}
 
-		private List<List<TagLabel>> CreateLabels(float maxWidth, SerializedProperty property)
+		// ── Picker menu ───────────────────────────────────────────────────────
+
+		private static void ShowPickerMenu(SerializedProperty tagsProperty, Tags tags, string path, string filter)
 		{
-			var labels = new List<List<TagLabel>>();
-			for (int i = 0; i < property.arraySize; i++)
+			var knownTags   = TagRegistry.GetKnownTags();
+			string lowerFilter = filter.ToLowerInvariant();
+
+			var menu     = new GenericMenu();
+			bool hasItems = false;
+
+			// "Create new tag" entry for whatever is currently typed
+			if (!string.IsNullOrEmpty(filter) && !tags.Contains(filter))
 			{
-				var tagProperty = property.GetArrayElementAtIndex(i);
-				var tag = tagProperty.stringValue;
-				var label = TagLabel.Create(tag, _tagStyle, i);
-				if (labels.Count > 0)
+				string captured = filter;
+				menu.AddItem(new GUIContent($"New \"{captured}\""), false, () =>
 				{
-					var lastRow = labels[^1];
-					var lastRowWidth = lastRow.Sum(l => l.width + 2);
-					if (lastRowWidth + label.width > maxWidth)
-					{
-						labels.Add(new List<TagLabel> { label });
-					}
-					else
-					{
-						lastRow.Add(label);
-					}
-				}
-				else
+					CommitTag(tagsProperty, captured, path);
+					_inputs[path] = "";
+				});
+				hasItems = true;
+			}
+
+			// Existing tags not yet applied, optionally filtered by input text
+			var suggestions = knownTags
+				.Where(t => !tags.Contains(t)
+					&& (string.IsNullOrEmpty(filter) || t.ToLowerInvariant().Contains(lowerFilter)))
+				.ToArray();
+
+			if (suggestions.Length > 0)
+			{
+				if (hasItems) menu.AddSeparator("");
+				foreach (var tag in suggestions)
 				{
-					labels.Add(new List<TagLabel> { label });
+					string captured = tag;
+					menu.AddItem(new GUIContent(captured), false, () =>
+					{
+						CommitTag(tagsProperty, captured, path);
+						_inputs[path] = "";
+					});
+					hasItems = true;
 				}
 			}
-			return labels;
+
+			if (!hasItems)
+				menu.AddDisabledItem(new GUIContent("No tags available"));
+
+			menu.ShowAsContext();
 		}
 
-		struct TagLabel
+		// ── Commit ────────────────────────────────────────────────────────────
+
+		private static void CommitTag(SerializedProperty tagsProperty, string tag, string path)
 		{
-			public string tag;
-			public int index;
-			public float width;
+			tagsProperty.arraySize++;
+			tagsProperty.GetArrayElementAtIndex(tagsProperty.arraySize - 1).stringValue = tag;
+			tagsProperty.serializedObject.ApplyModifiedProperties();
+			_layouts.Remove(path);
+			TagRegistry.Invalidate();
+		}
 
-			public static TagLabel Create(string tag, GUIStyle style, int index)
+		// ── Layout ────────────────────────────────────────────────────────────
+
+		private static List<List<ChipInfo>> GetOrBuildLayout(
+			string path, SerializedProperty tagsProperty, float contentWidth)
+		{
+			if (_layouts.TryGetValue(path, out var cached)
+				&& Mathf.Abs(cached.contentWidth - contentWidth) < 1f)
+				return cached.rows;
+
+			var rows = BuildLayout(tagsProperty, contentWidth);
+			_layouts[path] = (contentWidth, rows);
+			return rows;
+		}
+
+		private static List<List<ChipInfo>> BuildLayout(SerializedProperty tagsProperty, float contentWidth)
+		{
+			EnsureStyles();
+			var rows = new List<List<ChipInfo>>();
+			if (tagsProperty.arraySize == 0) return rows;
+
+			var  currentRow = new List<ChipInfo>();
+			rows.Add(currentRow);
+			float rowUsed = 0f;
+
+			for (int i = 0; i < tagsProperty.arraySize; i++)
 			{
-				return new()
+				string tag    = tagsProperty.GetArrayElementAtIndex(i).stringValue;
+				float chipW   = Mathf.Max(_chipStyle.CalcSize(new GUIContent(tag)).x, MinChipWidth);
+				var chip      = new ChipInfo(tag, i, chipW, ChipColor(tag));
+
+				if (currentRow.Count > 0 && rowUsed + chipW > contentWidth)
 				{
-					tag = tag,
-					index = index,
-					width = style.CalcSize(new GUIContent(tag)).x + 15
-				};
+					currentRow = new List<ChipInfo>();
+					rows.Add(currentRow);
+					rowUsed = 0f;
+				}
+
+				currentRow.Add(chip);
+				rowUsed += chipW + ChipSpacingX;
 			}
 
-			public Color GetColor()
-			{
-				var seed = tag.GetHashCode();
-				Random.InitState(seed);
-				var color = Color.white;
-				color.r = Random.value;
-				color.g = Random.value;
-				color.b = Random.value;
-				return color;
-			}
+			return rows;
+		}
+
+		// ── Color ─────────────────────────────────────────────────────────────
+
+		// Deterministic pastel color derived from the tag's hash code.
+		// Does not modify Unity's global Random state.
+		private static Color ChipColor(string tag)
+		{
+			uint hash = (uint)tag.GetHashCode();
+			float h = (hash % 360u) / 360f;
+			return Color.HSVToRGB(h, 0.42f, 0.90f);
+		}
+
+		// ── Data ──────────────────────────────────────────────────────────────
+
+		private readonly struct ChipInfo
+		{
+			public readonly string Tag;
+			public readonly int    Index;
+			public readonly float  Width;
+			public readonly Color  Color;
+
+			public ChipInfo(string tag, int index, float width, Color color) =>
+				(Tag, Index, Width, Color) = (tag, index, width, color);
 		}
 	}
 }

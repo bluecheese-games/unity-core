@@ -14,26 +14,24 @@ namespace BlueCheese.Core.Utils
 	{
 		[SerializeField] private string[] _values;
 
-		public readonly int Count => _values.Length;
+		public readonly int Count => _values?.Length ?? 0;
 
-		public readonly bool Contains(string value) => Array.IndexOf(_values, value) >= 0;
+		public readonly bool Contains(string value) =>
+			_values != null && Array.IndexOf(_values, value) >= 0;
 
 		public void Combine(Tags tags)
 		{
 			HashSet<string> values = _values != null ? new(_values) : new();
-			values.UnionWith(tags._values);
+			if (tags._values != null)
+				values.UnionWith(tags._values);
 			_values = values.ToArray();
 		}
 
 		public static implicit operator Tags(string[] values) => new() { _values = values };
 
-		public static implicit operator string[](Tags tags) => tags._values;
+		public static implicit operator string[](Tags tags) => tags._values ?? Array.Empty<string>();
 
-		public readonly string this[int index]
-		{
-			get => _values[index];
-			set => _values[index] = value;
-		}
+		public readonly string this[int index] => _values[index];
 
 		public override readonly string ToString()
 		{
