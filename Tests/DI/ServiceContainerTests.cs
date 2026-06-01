@@ -68,6 +68,16 @@ namespace BlueCheese.Tests.DI
 		public AchievementService(ILogger<AchievementService> logger) => Logger = logger;
 	}
 
+	public class FaultyDisposable : IDisposable
+	{
+		public void Dispose() => throw new InvalidOperationException("Dispose failed.");
+	}
+
+	public class FaultyDisposable2 : IDisposable
+	{
+		public void Dispose() => throw new InvalidOperationException("Second dispose failed.");
+	}
+
 	// --- Unit Tests ---
 
 	[TestFixture]
@@ -254,6 +264,71 @@ namespace BlueCheese.Tests.DI
 			// Verify singleton behavior on the dynamically created closed type
 			var logger2 = _container.Resolve<ILogger<AchievementService>>();
 			Assert.AreSame(achievementService.Logger, logger2);
+		}
+
+		[Test]
+		public void Resolve_TwoIndependentContainers_DoNotShareResolutionState()
+		{
+			// Arrange
+			var containerA = new ServiceContainer();
+			containerA.Register<Engine>();
+
+			var containerB = new ServiceContainer();
+			containerB.Register<Engine>();
+
+			// Act
+			var engineA = containerA.Resolve<Engine>();
+			var engineB = containerB.Resolve<Engine>();
+
+			// Assert
+			Assert.IsNotNull(engineA);
+			Assert.IsNotNull(engineB);
+			Assert.AreNotSame(engineA, engineB);
+		}
+
+		[Test]
+		public void Resolve_ChildDelegatingToParent_DoesNotTriggerCircularDetection()
+		{
+			// Arrange
+			var parent = new ServiceContainer();
+			parent.Register<IEngine, Engine>().AsSingleton();
+
+			var child = new ServiceContainer(parent);
+
+			// Act
+			var resolved = child.Resolve<IEngine>();
+
+			// Assert
+			Assert.IsNotNull(resolved);
+			Assert.IsInstanceOf<Engine>(resolved);
+		}
+
+		[Test]
+		public void Dispose_FaultyService_ThrowsAggregateException()
+		{
+			// Arrange
+			var container = new ServiceContainer();
+			container.Register<FaultyDisposable>(new FaultyDisposable());
+			container.Resolve<FaultyDisposable>();
+
+			// Act & Assert
+			var ex = Assert.Throws<AggregateException>(() => container.Dispose());
+			Assert.AreEqual(1, ex.InnerExceptions.Count);
+		}
+
+		[Test]
+		public void Dispose_MultipleFaultyServices_AllExceptionsCollected()
+		{
+			// Arrange
+			var container = new ServiceContainer();
+			container.Register<FaultyDisposable>(new FaultyDisposable());
+			container.Register<FaultyDisposable2>(new FaultyDisposable2());
+			container.Resolve<FaultyDisposable>();
+			container.Resolve<FaultyDisposable2>();
+
+			// Act & Assert
+			var ex = Assert.Throws<AggregateException>(() => container.Dispose());
+			Assert.AreEqual(2, ex.InnerExceptions.Count);
 		}
 	}
 }

@@ -90,6 +90,9 @@ namespace BlueCheese.Core.DI
 		/// <summary> Service will be created during container initialization. </summary>
 		public ServiceDescriptor AsEager() { _isLazy = false; return this; }
 
+		// Eager services are instantiated here if they have not been created yet.
+		// Lazy services are only initialized here if a prior Resolve() already created the instance;
+		// otherwise IInitializable.Initialize() is called at first resolution via ProcessNewInstance().
 		internal void Initialize()
 		{
 			if (!_isLazy && _instance == null) GetInstance<object>();

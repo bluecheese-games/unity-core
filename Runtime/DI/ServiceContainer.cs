@@ -21,8 +21,7 @@ namespace BlueCheese.Core.DI
 		private readonly ConcurrentDictionary<Type, Action<object>> _optionsConfigurations = new();
 		private readonly ConcurrentStack<IDisposable> _disposalStack = new();
 
-		[ThreadStatic]
-		private static List<Type> _resolutionStack;
+		private List<Type> _resolutionStack;
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="ServiceContainer"/> class.
@@ -179,11 +178,16 @@ namespace BlueCheese.Core.DI
 		private object ResolveOptions(Type optionsType)
 		{
 			object instance = Activator.CreateInstance(optionsType);
-			if (_optionsConfigurations.TryGetValue(optionsType, out var config)) config(instance);
-			else if (_parent != null) return _parent.ResolveOptions(optionsType);
-
+			ApplyOptionsConfiguration(optionsType, instance);
 			Type wrapperType = typeof(OptionsWrapper<>).MakeGenericType(optionsType);
 			return Activator.CreateInstance(wrapperType, instance);
+		}
+
+		// Walks the container hierarchy root-first, applying each level's configuration delegate to the same instance.
+		internal void ApplyOptionsConfiguration(Type optionsType, object instance)
+		{
+			_parent?.ApplyOptionsConfiguration(optionsType, instance);
+			if (_optionsConfigurations.TryGetValue(optionsType, out var config)) config(instance);
 		}
 
 		internal object ResolveAll(Type itemType)
@@ -223,7 +227,8 @@ namespace BlueCheese.Core.DI
 		}
 
 		/// <summary>
-		/// Triggers instantiation for eager services and initialization for existing ones.
+		/// Triggers instantiation for eager services and calls <see cref="IInitializable.Initialize"/> on them.
+		/// For lazy services, <see cref="IInitializable.Initialize"/> is called at first resolution, not here.
 		/// </summary>
 		public void Initialize()
 		{
@@ -240,12 +245,19 @@ namespace BlueCheese.Core.DI
 
 		/// <summary>
 		/// Disposes all created singleton services that implement <see cref="IDisposable"/>.
+		/// Throws an <see cref="AggregateException"/> if one or more services fail to dispose.
 		/// </summary>
 		public void Dispose()
 		{
-			while (_disposalStack.TryPop(out var d)) { try { d.Dispose(); } catch { } }
+			var exceptions = new List<Exception>();
+			while (_disposalStack.TryPop(out var d))
+			{
+				try { d.Dispose(); }
+				catch (Exception ex) { exceptions.Add(ex); }
+			}
 			_services.Clear();
 			_keyedServices.Clear();
+			if (exceptions.Count > 0) throw new AggregateException("One or more services failed to dispose.", exceptions);
 		}
 
 		#endregion
