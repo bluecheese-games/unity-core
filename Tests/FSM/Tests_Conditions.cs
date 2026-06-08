@@ -38,12 +38,28 @@ namespace BlueCheese.Tests.FSM
         }
 
         [Test]
+        public void Test_Condition_Evaluate_Bool_False()
+        {
+            // Arrange
+            var blackboard = new Blackboard();
+            ICondition condition = Condition.CreateBoolCondition("test", false);
+
+            // Act
+            blackboard.SetBool("test", false);
+
+            // Assert
+            Assert.That(condition.Evaluate(blackboard), Is.True);
+        }
+
+        [Test]
         [TestCase(Condition.Operator.Equals, 1, ExpectedResult = true)]
         [TestCase(Condition.Operator.NotEquals, 1, ExpectedResult = false)]
         [TestCase(Condition.Operator.Greater, 1, ExpectedResult = false)]
         [TestCase(Condition.Operator.Less, 1, ExpectedResult = false)]
         [TestCase(Condition.Operator.GreaterOrEqual, 1, ExpectedResult = true)]
         [TestCase(Condition.Operator.LessOrEqual, 1, ExpectedResult = true)]
+        [TestCase(Condition.Operator.Greater, 0, ExpectedResult = true)]
+        [TestCase(Condition.Operator.Less, 2, ExpectedResult = true)]
         public bool Test_Condition_Evaluate_Int(Condition.Operator op, int targetValue)
         {
             // Arrange
@@ -64,6 +80,8 @@ namespace BlueCheese.Tests.FSM
         [TestCase(Condition.Operator.Less, 1f, ExpectedResult = false)]
         [TestCase(Condition.Operator.GreaterOrEqual, 1f, ExpectedResult = true)]
         [TestCase(Condition.Operator.LessOrEqual, 1f, ExpectedResult = true)]
+        [TestCase(Condition.Operator.Greater, 0f, ExpectedResult = true)]
+        [TestCase(Condition.Operator.Less, 2f, ExpectedResult = true)]
         public bool Test_Condition_Evaluate_Float(Condition.Operator op, float targetValue)
         {
 			// Arrange
