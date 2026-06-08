@@ -393,6 +393,163 @@ namespace BlueCheese.Tests.FSM
             // Assert
             Assert.That(stateMachine.CurrentState, Is.EqualTo(stateB));
         }
+
+        [Test]
+        public void Test_Start_Twice()
+        {
+            // Arrange
+            stateMachine = new StateMachine.Builder()
+                .AddState("A", true)
+                .Build();
+            stateMachine.Start();
+
+            // Act / Assert
+            Assert.Throws<InvalidOperationException>(() => stateMachine.Start());
+        }
+
+        [Test]
+        public void Test_Update_Without_Start()
+        {
+            // Arrange
+            stateMachine = new StateMachine.Builder()
+                .AddState("A", true)
+                .Build();
+
+            // Act — doit être silencieux
+            stateMachine.Update(1f);
+
+            // Assert
+            Assert.That(stateMachine.StateTime, Is.EqualTo(0f));
+            Assert.That(stateMachine.CurrentState, Is.Null);
+        }
+
+        [Test]
+        public void Test_SetState_Without_Start()
+        {
+            // Arrange
+            stateMachine = new StateMachine.Builder()
+                .AddState("A", true)
+                .Build();
+
+            // Act — doit être silencieux
+            stateMachine.SetState("A");
+
+            // Assert
+            Assert.That(stateMachine.CurrentState, Is.Null);
+        }
+
+        [Test]
+        public void Test_OnEnterState_Event()
+        {
+            // Arrange
+            var stateA = "A";
+            var stateB = "B";
+            stateMachine = new StateMachine.Builder()
+                .AddState(stateA, true)
+                .AddState(stateB)
+                .Build();
+
+            string enteredState = null;
+            stateMachine.OnEnterState += s => enteredState = s;
+
+            // Act
+            stateMachine.Start();
+
+            // Assert
+            Assert.That(enteredState, Is.EqualTo(stateA));
+        }
+
+        [Test]
+        public void Test_OnExitState_Event()
+        {
+            // Arrange
+            var stateA = "A";
+            var stateB = "B";
+            stateMachine = new StateMachine.Builder()
+                .AddState(stateA, true)
+                .AddState(stateB)
+                .AddTransition(stateA, stateB)
+                .Build();
+
+            string exitedState = null;
+            stateMachine.OnExitState += s => exitedState = s;
+            stateMachine.Start();
+
+            // Act
+            stateMachine.Update(0f);
+
+            // Assert
+            Assert.That(exitedState, Is.EqualTo(stateA));
+        }
+
+        [Test]
+        public void Test_AnyTransition_WhenNormalTransitionExists()
+        {
+            // Vérifie que les anyTransitions ne s'appliquent pas quand l'état courant
+            // a ses propres transitions dans le dictionnaire
+            var stateA = "A";
+            var stateB = "B";
+            var stateC = "C";
+            stateMachine = new StateMachine.Builder()
+                .AddState(stateA, true)
+                .AddState(stateB)
+                .AddState(stateC)
+                .AddTransition(stateA, stateB, 1f)
+                .AddTransitionFromAnyState(stateC, Condition.CreateTriggerCondition("go"))
+                .Build();
+            stateMachine.Start();
+            stateMachine.Blackboard.SetTrigger("go");
+
+            // Act — stateA a une transition normale, anyTransition ne devrait pas s'activer
+            stateMachine.Update(0f);
+
+            // Assert
+            Assert.That(stateMachine.CurrentState, Is.EqualTo(stateA));
+        }
+
+        [Test]
+        public void Test_CompositeStateHandler_AllHandlersCalled()
+        {
+            // Arrange
+            var handlerA = new MockStateHandler();
+            var handlerB = new MockStateHandler();
+            stateMachine = new StateMachine.Builder()
+                .AddState("A", handlerA, true)
+                .Build();
+            stateMachine.GetStateHandler("A").AddHandler(handlerB);
+            stateMachine.Start();
+
+            // Act
+            stateMachine.Update(1f);
+
+            // Assert
+            Assert.That(handlerA.OnEnterCallCount, Is.EqualTo(1));
+            Assert.That(handlerB.OnEnterCallCount, Is.EqualTo(1));
+            Assert.That(handlerA.OnUpdateTime, Is.EqualTo(1f));
+            Assert.That(handlerB.OnUpdateTime, Is.EqualTo(1f));
+        }
+
+        [Test]
+        public void Test_CompositeStateHandler_RemoveHandler()
+        {
+            // Arrange
+            var handlerA = new MockStateHandler();
+            var handlerB = new MockStateHandler();
+            stateMachine = new StateMachine.Builder()
+                .AddState("A", handlerA, true)
+                .Build();
+            var composite = stateMachine.GetStateHandler("A");
+            composite.AddHandler(handlerB);
+            composite.RemoveHandler(handlerB);
+            stateMachine.Start();
+
+            // Act
+            stateMachine.Update(1f);
+
+            // Assert
+            Assert.That(handlerA.OnEnterCallCount, Is.EqualTo(1));
+            Assert.That(handlerB.OnEnterCallCount, Is.EqualTo(0));
+        }
     }
 
     public class MockStateHandler : IStateHandler
