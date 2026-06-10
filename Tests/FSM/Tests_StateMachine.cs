@@ -309,9 +309,79 @@ namespace BlueCheese.Tests.FSM
             Assert.That(stateAHandler.OnExitCallCount, Is.EqualTo(1));
             Assert.That(stateBHandler.OnEnterCallCount, Is.EqualTo(1));
             Assert.That(stateBHandler.OnExitCallCount, Is.EqualTo(0));
-        }
+		}
 
-        [Test]
+		[Test]
+		public void Test_Update_With_MultipleTimeTransition()
+		{
+			// Arrange
+			var stateA = "A";
+			var stateB = "B";
+            var stateC = "C";
+			stateMachine = new StateMachine.Builder()
+				.AddState(stateA, true)
+				.AddState(stateB)
+                .AddState(stateC)
+				.AddTransition(stateA, stateB, 1f)
+                .AddTransition(stateA, stateC, 1f)
+				.Build();
+			stateMachine.Start();
+
+			// Act
+			stateMachine.Update(1f);
+
+			// Assert
+			Assert.That(stateMachine.CurrentState, Is.EqualTo(stateB));
+		}
+
+		[Test]
+		public void Test_Update_With_DifferentTimeTransition()
+		{
+			// Arrange
+			var stateA = "A";
+			var stateB = "B";
+			var stateC = "C";
+			stateMachine = new StateMachine.Builder()
+				.AddState(stateA, true)
+				.AddState(stateB)
+				.AddState(stateC)
+				.AddTransition(stateA, stateB, 1f)
+				.AddTransition(stateA, stateC, 2f)
+				.Build();
+			stateMachine.Start();
+
+			// Act
+			stateMachine.Update(2f);
+
+			// Assert
+			Assert.That(stateMachine.CurrentState, Is.EqualTo(stateB));
+		}
+
+		[Test]
+		public void Test_Update_With_SequencialTimeTransitions()
+		{
+			// Arrange
+			var stateA = "A";
+			var stateB = "B";
+			var stateC = "C";
+			stateMachine = new StateMachine.Builder()
+				.AddState(stateA, true)
+				.AddState(stateB)
+				.AddState(stateC)
+				.AddTransition(stateA, stateB, 1f)
+				.AddTransition(stateB, stateC, 1f)
+				.Build();
+			stateMachine.Start();
+
+			// Act
+			stateMachine.Update(2.5f);
+
+			// Assert
+			Assert.That(stateMachine.CurrentState, Is.EqualTo(stateC));
+            Assert.That(stateMachine.StateTime, Is.EqualTo(0.5f));
+		}
+
+		[Test]
         public void Test_Update()
         {
             // Arrange
@@ -354,6 +424,31 @@ namespace BlueCheese.Tests.FSM
         }
 
         [Test]
+        public void Test_AnyTransition_DoesNotFireWhenAlreadyInTargetState()
+        {
+            // Arrange — Any State → B with a bool condition that stays true
+            var stateA = "A";
+            var stateB = "B";
+            var handlerB = new MockStateHandler();
+            stateMachine = new StateMachine.Builder()
+                .AddState(stateA, true)
+                .AddState(stateB, handlerB)
+                .AddTransitionFromAnyState(stateB, Condition.CreateBoolCondition("flag", true))
+                .Build();
+            stateMachine.Blackboard.SetBool("flag", true);
+            stateMachine.Start();
+
+            // Act — first update transitions A → B; subsequent updates must NOT re-enter B
+            stateMachine.Update(0f); // should transition to B
+            stateMachine.Update(0f); // flag is still true but we're already in B → no-op
+            stateMachine.Update(0f);
+
+            // Assert — OnEnter called exactly once despite condition remaining true
+            Assert.That(stateMachine.CurrentState, Is.EqualTo(stateB));
+            Assert.That(handlerB.OnEnterCallCount, Is.EqualTo(1));
+        }
+
+        [Test]
         public void Test_Update_TranstionFromAnyState()
         {
             // Arrange
@@ -372,9 +467,9 @@ namespace BlueCheese.Tests.FSM
 
             // Assert
             Assert.That(stateMachine.CurrentState, Is.EqualTo(stateB));
-        }
+		}
 
-        [Test]
+		[Test]
         public void Test_SetState()
         {
             // Arrange
@@ -485,8 +580,7 @@ namespace BlueCheese.Tests.FSM
         [Test]
         public void Test_AnyTransition_WhenNormalTransitionExists()
         {
-            // Vérifie que les anyTransitions ne s'appliquent pas quand l'état courant
-            // a ses propres transitions dans le dictionnaire
+            // Arrange
             var stateA = "A";
             var stateB = "B";
             var stateC = "C";
@@ -500,11 +594,30 @@ namespace BlueCheese.Tests.FSM
             stateMachine.Start();
             stateMachine.Blackboard.SetTrigger("go");
 
-            // Act — stateA a une transition normale, anyTransition ne devrait pas s'activer
+            // Act
             stateMachine.Update(0f);
 
             // Assert
-            Assert.That(stateMachine.CurrentState, Is.EqualTo(stateA));
+            Assert.That(stateMachine.CurrentState, Is.EqualTo(stateC));
+        }
+
+        [Test]
+        public void Test_Initialize_Context_Injected()
+        {
+            // Arrange
+            var stateA = "A";
+            var handler = new MockStateHandler();
+            stateMachine = new StateMachine.Builder()
+                .AddState(stateA, handler, true)
+                .Build();
+
+            // Act
+            stateMachine.Start();
+
+            // Assert
+            Assert.That(handler.Context, Is.Not.Null);
+            Assert.That(handler.Context.StateName, Is.EqualTo(stateA));
+            Assert.That(handler.Context.Blackboard, Is.Not.Null);
         }
 
         [Test]
@@ -554,16 +667,14 @@ namespace BlueCheese.Tests.FSM
 
     public class MockStateHandler : IStateHandler
     {
-        public int OnEnterCallCount = 0;
-        public int OnExitCallCount = 0;
-        public float OnUpdateTime = 0f;
+        public int OnEnterCallCount  = 0;
+        public int OnExitCallCount   = 0;
+        public float OnUpdateTime    = 0f;
+        public IStateContext Context = null;
 
-        public void OnEnter() { OnEnterCallCount++; }
-
-        public void OnExit() { OnExitCallCount++; }
-
-        public void OnUpdate(float deltaTime) { OnUpdateTime += deltaTime; }
-
-        public void Dispose() { }
+        public void Initialize(IStateContext context) { Context = context; }
+        public void OnEnter()                         { OnEnterCallCount++; }
+        public void OnExit()                          { OnExitCallCount++; }
+        public void OnUpdate(float deltaTime)         { OnUpdateTime += deltaTime; }
     }
 }

@@ -1,7 +1,61 @@
-#Grid
-{
-	--thick-lines: 0;
-	--spacing: 25;
-	--grid-background-color: rgb(35, 35, 35);
-	--line-color: rgb(32, 32, 32);
+/* ── Grid ───────────────────────────────────────────────────────────── */
+#Grid {
+    --thick-lines:           0;
+    --spacing:               25;
+    --grid-background-color: rgb(30, 30, 30);
+    --line-color:            rgba(255, 255, 255, 0.04);
+    --thick-line-color:      rgba(255, 255, 255, 0.08);
+}
+
+/* ── State nodes ────────────────────────────────────────────────────── */
+.state-node {
+    min-width:     140px;
+    border-radius: 6px;
+    /* Default border — overridden via inline style in StateNode.UpdateDefaultStyle() */
+    border-width:  1px;
+    border-color:  rgba(58, 123, 213, 0.8);
+    border-radius: 6px;
+}
+
+.state-node > #title {
+    background-color:        #3a7bd5;
+    border-top-left-radius:  6px;
+    border-top-right-radius: 6px;
+    padding:                 4px 8px;
+    cursor:                  text;
+}
+
+/* Default state — title becomes gold */
+.state-node--default > #title {
+    background-color: #b8860b;
+}
+
+/* Rename overlay */
+.state-node__rename-field {
+    position:         absolute;
+    left:             0;
+    right:            0;
+    top:              0;
+    bottom:           0;
+    background-color: #1a1a2e;
+    color:            #ffffff;
+    border-width:     1px;
+    border-color:     #f0c040;
+    border-radius:    2px;
+    font-size:        12px;
+    padding:          2px 4px;
+}
+
+/* ── Any State node ─────────────────────────────────────────────────── */
+.any-state-node > #title {
+    background-color:        #8e44ad;
+    border-top-left-radius:  6px;
+    border-top-right-radius: 6px;
+    padding:                 4px 8px;
+}
+
+.any-state-node {
+    border-color:  rgba(142, 68, 173, 0.8);
+    border-width:  1px;
+    border-radius: 6px;
 }
