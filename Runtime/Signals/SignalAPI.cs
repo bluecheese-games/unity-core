@@ -13,6 +13,8 @@ namespace BlueCheese.Core.Signals
     /// Main features are:
     /// - Subscribe/Unsubscribe to any signal without reference to any other system
     /// - Subscribe once to auto unsubscribe after the first handled signal
+    /// - Handlers can be prioritized via .WithPriority() on the returned builder
+    /// - Handlers can cancel signal propagation by accepting a SignalContext parameter
     /// - Signals can be isolated in channels
     /// </summary>
     public static class SignalAPI
@@ -24,86 +26,70 @@ namespace BlueCheese.Core.Signals
         /// </summary>
         public static SignalChannel Default => _defaultChannel;
 
-        /// <summary>
-        /// Reset the default channel.
-        /// </summary>
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)] // Ensure domain reload
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         public static void Reset()
             => _defaultChannel.Reset();
 
-        /// <summary>
-        /// Subscribe to a signal in the default channel.
-        /// </summary>
-        /// <param name="handler">The handler method</param>
-        /// <param name="handle">The subscribing handle</param>
-        public static void Subscribe<T>(Action<T> handler, object handle = null)
+        // --- Subscribe (sync) ---
+
+        public static SubscriptionBuilder<T> Subscribe<T>(Action<T> handler, object handle = null)
             => _defaultChannel.Subscribe(handler, handle);
 
-        /// <summary>
-        /// Subscribe to a signal in the default channel.
-        /// Unsubscribe automatically after the first signal received.
-        /// </summary>
-        /// <param name="handler">The handler method</param>
-        /// <param name="handle">The subscribing handle</param>
-        public static void SubscribeOnce<T>(Action<T> handler, object handle = null)
+        public static SubscriptionBuilder<T> SubscribeOnce<T>(Action<T> handler, object handle = null)
             => _defaultChannel.SubscribeOnce(handler, handle);
 
-        /// <summary>
-        /// Subscribe to a signal in the default channel.
-        /// </summary>
-        /// <param name="handler">The async handler method</param>
-        /// <param name="handle">The subscribing handle</param>
-        public static void Subscribe<T>(Func<T, UniTask> handler, object handle = null)
+        // --- Subscribe (async) ---
+
+        public static SubscriptionBuilder<T> Subscribe<T>(Func<T, UniTask> handler, object handle = null)
             => _defaultChannel.Subscribe(handler, handle);
 
-        /// <summary>
-        /// Subscribe to a signal in the default channel.
-        /// Unsubscribe automatically after the first signal received.
-        /// </summary>
-        /// <param name="handler">The async handler method</param>
-        /// <param name="handle">The subscribing handle</param>
-        public static void SubscribeOnce<T>(Func<T, UniTask> handler, object handle = null)
+        public static SubscriptionBuilder<T> SubscribeOnce<T>(Func<T, UniTask> handler, object handle = null)
             => _defaultChannel.SubscribeOnce(handler, handle);
 
-        /// <summary>
-        /// Returns the number of subscribers of this signal in the default channel.
-        /// </summary>
-        /// <typeparam name="T">The signal type</typeparam>
+        // --- Subscribe (sync, cancellable) ---
+
+        public static SubscriptionBuilder<T> Subscribe<T>(Action<T, SignalContext> handler, object handle = null)
+            => _defaultChannel.Subscribe(handler, handle);
+
+        public static SubscriptionBuilder<T> SubscribeOnce<T>(Action<T, SignalContext> handler, object handle = null)
+            => _defaultChannel.SubscribeOnce(handler, handle);
+
+        // --- Subscribe (async, cancellable) ---
+
+        public static SubscriptionBuilder<T> Subscribe<T>(Func<T, SignalContext, UniTask> handler, object handle = null)
+            => _defaultChannel.Subscribe(handler, handle);
+
+        public static SubscriptionBuilder<T> SubscribeOnce<T>(Func<T, SignalContext, UniTask> handler, object handle = null)
+            => _defaultChannel.SubscribeOnce(handler, handle);
+
+        // --- Count ---
+
         public static int Count<T>()
             => _defaultChannel.Count<T>();
 
-        /// <summary>
-        /// Unsubscribe from a signal in the default channel.
-        /// </summary>
-        /// <param name="handler">The subscribed handler method</param>
+        // --- Unsubscribe ---
+
         public static void Unsubscribe<T>(Action<T> handler)
             => _defaultChannel.Unsubscribe<T>(handler);
 
-        /// <summary>
-        /// Unsubscribe from a signal in the default channel.
-        /// </summary>
-        /// <param name="handle">The subscribing handle</param>
         public static void Unsubscribe(object handle)
             => _defaultChannel.Unsubscribe(handle);
 
-        /// <summary>
-        /// Unsubscribe all subscribers from a signal in the default channel.
-        /// </summary>
         public static void UnsubscribeAll<T>()
             => _defaultChannel.UnsubscribeAll<T>();
 
+        // --- Publish ---
+
         /// <summary>
-        /// Publish a signal in the default channel.
+        /// Publishes a signal synchronously. Returns the context, which may be checked for cancellation.
         /// </summary>
-        /// <param name="signal">The signal instance</param>
-        public static void Publish<T>(T signal = default)
+        public static SignalContext Publish<T>(T signal = default)
             => _defaultChannel.Publish(signal);
 
         /// <summary>
-        /// Publish a signal asynchronously in the default channel.
+        /// Publishes a signal asynchronously. Returns the context, which may be checked for cancellation.
         /// </summary>
-        /// <param name="signal">The signal instance</param>
-        public static async UniTask PublishAsync<T>(T signal = default)
+        public static async UniTask<SignalContext> PublishAsync<T>(T signal = default)
             => await _defaultChannel.PublishAsync(signal);
     }
 }

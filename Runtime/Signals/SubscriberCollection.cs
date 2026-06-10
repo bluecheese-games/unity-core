@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Cysharp.Threading.Tasks;
 
 namespace BlueCheese.Core.Signals
@@ -12,11 +13,14 @@ namespace BlueCheese.Core.Signals
     {
         public interface ISubscriberCollection
         {
-            void Add<T>(Action<T> handler, object handle, bool once);
-            void Add<T>(Func<T, UniTask> handler, object handle, bool oneShot);
+            ISubscriber Add<T>(Action<T> handler, object handle, bool oneShot);
+            ISubscriber Add<T>(Func<T, UniTask> handler, object handle, bool oneShot);
+            ISubscriber Add<T>(Action<T, SignalContext> handler, object handle, bool oneShot);
+            ISubscriber Add<T>(Func<T, SignalContext, UniTask> handler, object handle, bool oneShot);
             int Count();
-            void Publish<T>(T signal);
-			UniTask PublishAsync<T>(T signal);
+            SignalContext Publish<T>(T signal);
+            UniTask<SignalContext> PublishAsync<T>(T signal);
+            void ReplayLast(ISubscriber subscriber);
             void Remove(ISubscriber subscriber);
             void RemoveAll();
             void RemoveAll(object handle);
@@ -26,59 +30,90 @@ namespace BlueCheese.Core.Signals
         private sealed class SubscriberCollection<TSignal> : ISubscriberCollection
         {
             private readonly List<ISubscriber> _subscribers = new();
+            private TSignal _lastSignal;
+            private bool _hasLastSignal;
 
-            public void Add<T>(Action<T> handler, object handle, bool oneShot)
+            public ISubscriber Add<T>(Action<T> handler, object handle, bool oneShot)
             {
                 var subscriber = new Subscriber<T>(handler, handle, oneShot);
                 _subscribers.Add(subscriber);
+                return subscriber;
             }
 
-            public void Add<T>(Func<T, UniTask> handler, object handle, bool oneShot)
+            public ISubscriber Add<T>(Func<T, UniTask> handler, object handle, bool oneShot)
             {
                 var subscriber = new Subscriber<T>(handler, handle, oneShot);
                 _subscribers.Add(subscriber);
+                return subscriber;
+            }
+
+            public ISubscriber Add<T>(Action<T, SignalContext> handler, object handle, bool oneShot)
+            {
+                var subscriber = new Subscriber<T>(handler, handle, oneShot);
+                _subscribers.Add(subscriber);
+                return subscriber;
+            }
+
+            public ISubscriber Add<T>(Func<T, SignalContext, UniTask> handler, object handle, bool oneShot)
+            {
+                var subscriber = new Subscriber<T>(handler, handle, oneShot);
+                _subscribers.Add(subscriber);
+                return subscriber;
             }
 
             public int Count() => _subscribers.Count;
 
-            public void Publish<T>(T signal)
+            public SignalContext Publish<T>(T signal)
             {
-                var subscribersCopy = _subscribers.ToArray();
+                _lastSignal = (TSignal)(object)signal;
+                _hasLastSignal = true;
 
-                // Publish the signal to all subscribers
-                for (int i = 0; i < subscribersCopy.Length; i++)
+                var ctx = new SignalContext();
+                var snapshot = GetSortedSnapshot();
+
+                for (int i = 0; i < snapshot.Length; i++)
                 {
-                    Subscriber<T> subscriber = (Subscriber<T>)subscribersCopy[i];
-                    subscriber.Invoke(signal);
-                    if (subscriber.IsOneShot)
-                    {
-                        Remove(subscriber);
-                    }
+                    var subscriber = (Subscriber<T>)snapshot[i];
+                    subscriber.Invoke(signal, ctx);
+                    if (subscriber.IsOneShot) Remove(subscriber);
+                    if (ctx.IsCancelled) break;
                 }
+                return ctx;
             }
 
-            public async UniTask PublishAsync<T>(T signal)
+            public async UniTask<SignalContext> PublishAsync<T>(T signal)
             {
-                var subscribersCopy = _subscribers.ToArray();
+                _lastSignal = (TSignal)(object)signal;
+                _hasLastSignal = true;
 
-                // Publish the signal to all subscribers
-                for (int i = 0; i < subscribersCopy.Length; i++)
+                var ctx = new SignalContext();
+                var snapshot = GetSortedSnapshot();
+
+                for (int i = 0; i < snapshot.Length; i++)
                 {
-                    Subscriber<T> subscriber = (Subscriber<T>)subscribersCopy[i];
-                    await subscriber.InvokeAsync(signal);
-                    if (subscriber.IsOneShot)
-                    {
-                        Remove(subscriber);
-                    }
+                    var subscriber = (Subscriber<T>)snapshot[i];
+                    await subscriber.InvokeAsync(signal, ctx);
+                    if (subscriber.IsOneShot) Remove(subscriber);
+                    if (ctx.IsCancelled) break;
                 }
+                return ctx;
             }
+
+            public void ReplayLast(ISubscriber subscriber)
+            {
+                if (!_hasLastSignal) return;
+                var ctx = new SignalContext();
+                subscriber.InvokeAsync<TSignal>(_lastSignal, ctx).Forget();
+                if (subscriber.IsOneShot) Remove(subscriber);
+            }
+
+            // OrderByDescending is stable: equal priorities preserve subscription (FIFO) order.
+            private ISubscriber[] GetSortedSnapshot()
+                => _subscribers.OrderByDescending(s => s.Priority).ToArray();
 
             public void Remove(ISubscriber subscriber) => _subscribers.Remove(subscriber);
-
             public void RemoveAll() => _subscribers.Clear();
-
             public void RemoveAll(object handle) => _subscribers.RemoveAll(s => s.HasHandle(handle));
-
             public void RemoveAll<T>(Action<T> handler) => _subscribers.RemoveAll(s => s.HasHandler(handler));
         }
     }

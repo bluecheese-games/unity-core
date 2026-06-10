@@ -1,0 +1,13 @@
+//
+// Copyright (c) 2026 BlueCheese Games All rights reserved
+//
+
+namespace BlueCheese.Core.Signals
+{
+    public class SignalContext
+    {
+        public bool IsCancelled { get; private set; }
+
+        public void Cancel() => IsCancelled = true;
+    }
+}
