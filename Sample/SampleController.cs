@@ -49,4 +49,44 @@ namespace BlueCheese.Core.FSM.Sample
             }
         }
     }
+
+    public class SampleStateHandler : IStateHandler
+    {
+        private string _stateName;
+
+        public void Initialize(IStateContext context)
+        {
+            _stateName = context.StateName;
+        }
+
+        public void OnEnter()
+        {
+            Debug.Log($"Enter State: {_stateName}");
+        }
+
+        public void OnExit()
+        {
+            Debug.Log($"Exit State: {_stateName}");
+        }
+
+        public void OnUpdate(float deltaTime)
+        {
+        }
+    }
+
+	public class SpaceKeyPressed : IPredicate
+	{
+		public bool Evaluate(IStateContext context)
+		{
+            return Input.GetKeyDown(KeyCode.Space);
+		}
+	}
+
+	public class KeyPressed : IPredicate
+	{
+		public KeyCode key = KeyCode.None;
+
+		public bool Evaluate(IStateContext context)
+			=> UnityEngine.Input.GetKey(key);
+	}
 }

@@ -3,8 +3,8 @@
 //
 
 using BlueCheese.Core.FSM.Graph;
-using UnityEditor.Callbacks;
 using UnityEditor;
+using UnityEditor.Callbacks;
 using UnityEngine;
 
 namespace BlueCheese.Core.FSM.Editor
@@ -15,25 +15,20 @@ namespace BlueCheese.Core.FSM.Editor
         public override void OnInspectorGUI()
         {
             if (GUILayout.Button("Open in Graph Editor"))
-            {
-                FSMGraphAsset asset = (FSMGraphAsset)target;
-                FSMGraphEditorWindow.Open(asset);
-            }
+                FSMGraphEditorWindow.Open((FSMGraphAsset)target);
 
-            base.OnInspectorGUI();
+            // Show raw data for debug purposes only in developer mode
+            if (EditorPrefs.GetBool("FSM.ShowRawAsset", false))
+                base.OnInspectorGUI();
         }
 
         [OnOpenAsset]
-        //Handles opening the editor window when double-clicking project files
         public static bool OnOpenAsset(int instanceID, int line)
         {
-            FSMGraphAsset asset = EditorUtility.InstanceIDToObject(instanceID) as FSMGraphAsset;
-            if (asset != null)
-            {
-                FSMGraphEditorWindow.Open(asset);
-                return true;
-            }
-            return false;
+            var asset = EditorUtility.InstanceIDToObject(instanceID) as FSMGraphAsset;
+            if (asset == null) return false;
+            FSMGraphEditorWindow.Open(asset);
+            return true;
         }
     }
 }

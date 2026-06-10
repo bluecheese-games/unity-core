@@ -13,41 +13,67 @@ MonoBehaviour:
   m_Name: FSM_SampleGraph
   m_EditorClassIdentifier: 
   States:
-  - DisplayName: intro [Default]
-    Name: intro
+  - Name: intro
     IsDefault: 1
-    Position: {x: 0, y: 0}
-  - DisplayName: run
-    Name: run
+    Position: {x: -248, y: -156.8}
+    HandlerTypeNames:
+    - BlueCheese.Core.FSM.Sample.SampleStateHandler, BlueChese.Core.Sample, Version=0.0.0.0,
+      Culture=neutral, PublicKeyToken=null
+  - Name: run
     IsDefault: 0
-    Position: {x: 0, y: 0}
-  - DisplayName: over
-    Name: over
+    Position: {x: -16, y: -156.8}
+    HandlerTypeNames:
+    - BlueCheese.Core.FSM.Sample.SampleStateHandler, BlueChese.Core.Sample, Version=0.0.0.0,
+      Culture=neutral, PublicKeyToken=null
+  - Name: over
     IsDefault: 0
-    Position: {x: 0, y: 0}
+    Position: {x: 289.6, y: -129.6}
+    HandlerTypeNames:
+    - BlueCheese.Core.FSM.Sample.SampleStateHandler, BlueChese.Core.Sample, Version=0.0.0.0,
+      Culture=neutral, PublicKeyToken=null
   Transitions:
-  - DisplayName: intro => run
-    Position: {x: 0, y: 0}
-    FromState: intro
-    ToState: run
-    ExitTime: 3
-    Conditions: []
-  - DisplayName: run => over
-    Position: {x: 0, y: 0}
-    FromState: run
+  - FromState: run
     ToState: over
-    ExitTime: 0
+    UseExitTime: 0
+    ExitTime: 2
     Conditions:
-    - DisplayName: -- click --
-      ParameterName: click
+    - ParameterName: click
       Operator: 0
       TargetBoolValue: 0
       TargetIntValue: 0
       TargetFloatValue: 0
+  - FromState: 
+    ToState: over
+    UseExitTime: 0
+    ExitTime: 0
+    Conditions:
+    - ParameterName: SpaceKeyPressed
+      Operator: 0
+      TargetBoolValue: 0
+      TargetIntValue: 0
+      TargetFloatValue: 0
+  - FromState: intro
+    ToState: run
+    UseExitTime: 1
+    ExitTime: 3
+    Conditions: []
   Blackboard:
-  - DisplayName: '[Trigger] click'
-    Name: click
+  - Name: click
     Type: 0
     DefaultBoolValue: 0
     DefaultIntValue: 0
     DefaultFloatValue: 0
+    PredicateTypeName: 
+    PredicateJson: 
+  - Name: SpaceKeyPressed
+    Type: 4
+    DefaultBoolValue: 0
+    DefaultIntValue: 0
+    DefaultFloatValue: 0
+    PredicateTypeName: BlueCheese.Core.FSM.Sample.KeyPressed, BlueChese.Core.Sample,
+      Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+    PredicateJson: '{"key":32}'
+  ViewState:
+    ViewPosition: {x: 380, y: 248, z: 0}
+    ViewScale: {x: 1, y: 1, z: 1}
+    AnyStatePosition: {x: -248, y: -3.2000008}

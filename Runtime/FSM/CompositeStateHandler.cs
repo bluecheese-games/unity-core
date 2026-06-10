@@ -7,52 +7,50 @@ using System.Linq;
 
 namespace BlueCheese.Core.FSM
 {
-	public class CompositeStateHandler : IStateHandler
-	{
-		protected readonly List<IStateHandler> _handlers = new();
+    public class CompositeStateHandler : IStateHandler
+    {
+        protected readonly List<IStateHandler> _handlers = new();
 
-		public IReadOnlyList<IStateHandler> Handlers => _handlers;
+        public IReadOnlyList<IStateHandler> Handlers => _handlers;
 
-		public CompositeStateHandler(params IStateHandler[] handlers)
-		{
-			_handlers.AddRange(handlers.Where(h => h != null));
-		}
+        public CompositeStateHandler(params IStateHandler[] handlers)
+        {
+            _handlers.AddRange(handlers.Where(h => h != null));
+        }
 
-		public void AddHandler(IStateHandler handler)
-		{
-			if (handler != null)
-			{
-				_handlers.Add(handler);
-			}
-		}
+        public void AddHandler(IStateHandler handler)
+        {
+            if (handler != null)
+                _handlers.Add(handler);
+        }
 
-		public void RemoveHandler(IStateHandler handler)
-		{
-			_handlers.Remove(handler);
-		}
+        public void RemoveHandler(IStateHandler handler)
+        {
+            _handlers.Remove(handler);
+        }
 
-		public void OnEnter()
-		{
-			foreach (var handler in _handlers)
-			{
-				handler.OnEnter();
-			}
-		}
+        public void Initialize(IStateContext context)
+        {
+            foreach (var handler in _handlers)
+                handler.Initialize(context);
+        }
 
-		public void OnExit()
-		{
-			foreach (var handler in _handlers)
-			{
-				handler.OnExit();
-			}
-		}
+        public void OnEnter()
+        {
+            foreach (var handler in _handlers)
+                handler.OnEnter();
+        }
 
-		public void OnUpdate(float deltaTime)
-		{
-			foreach (var handler in _handlers)
-			{
-				handler.OnUpdate(deltaTime);
-			}
-		}
-	}
+        public void OnExit()
+        {
+            foreach (var handler in _handlers)
+                handler.OnExit();
+        }
+
+        public void OnUpdate(float deltaTime)
+        {
+            foreach (var handler in _handlers)
+                handler.OnUpdate(deltaTime);
+        }
+    }
 }

@@ -6,10 +6,17 @@ namespace BlueCheese.Core.FSM
 {
     public interface IStateHandler
     {
-        public void OnEnter();
+        /// <summary>
+        /// Called once when the state machine starts, before any state is entered.
+        /// Override to receive the state name and blackboard.
+        /// Default implementation does nothing — existing handlers need no changes.
+        /// </summary>
+        void Initialize(IStateContext context) { }
 
-        public void OnUpdate(float deltaTime);
+        void OnEnter();
 
-        public void OnExit();
+        void OnUpdate(float deltaTime);
+
+        void OnExit();
     }
 }

@@ -136,7 +136,23 @@ namespace BlueCheese.Core.FSM
 
 			IsStarted = true;
 
+			// Inject context into every handler before any state is entered
+			foreach (var (stateName, composite) in _stateHandlers)
+			{
+				IStateContext ctx = new StateContext(stateName, _blackboard);
+				composite.Initialize(ctx);
+			}
+
 			SetState(DefaultState);
+		}
+
+		/// <summary>Lightweight context passed to state handlers on start.</summary>
+		private sealed class StateContext : IStateContext
+		{
+			public string StateName  { get; }
+			public IBlackboard Blackboard { get; }
+			public StateContext(string stateName, IBlackboard blackboard)
+			{ StateName = stateName; Blackboard = blackboard; }
 		}
 
 		/// <summary>
@@ -167,24 +183,30 @@ namespace BlueCheese.Core.FSM
 				return;
 			}
 
-			if (!_transitions.TryGetValue(CurrentState, out var transitions))
+			if (_transitions.TryGetValue(CurrentState, out var transitions))
 			{
-				if (_anyTransitions.Count > 0)
+				foreach (var transition in transitions)
 				{
-					transitions = _anyTransitions;
-				}
-				else
-				{
-					return;
+					if (transition.Evaluate(StateTime, Blackboard, out string nextState, out float overTime))
+					{
+						SetState(nextState, overTime);
+						break;
+					}
 				}
 			}
 
-			foreach (var transition in transitions)
+			if (_anyTransitions.Count > 0)
 			{
-				if (transition.Evaluate(StateTime, Blackboard, out string nextState, out float overTime))
+				foreach (var transition in _anyTransitions)
 				{
-					SetState(nextState, overTime);
-					break;
+					// Skip if we're already in the target state — avoids infinite self-transitions.
+					if (transition.NextState == CurrentState) continue;
+
+					if (transition.Evaluate(StateTime, Blackboard, out string nextState, out float overTime))
+					{
+						SetState(nextState, overTime);
+						break;
+					}
 				}
 			}
 		}

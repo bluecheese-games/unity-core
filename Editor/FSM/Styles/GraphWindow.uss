@@ -1,52 +1,354 @@
-.fsm-popup
-{
-	position: absolute;
-	flex-grow: 1;
-	background-color: rgba(0, 0, 0, 0.3);
-	justify-content: center;
+/* ── Window layout ──────────────────────────────────────────────────── */
+.fsm-toolbar {
+    height:              28px;
+    background-color:    #2c2c2c;
+    border-bottom-width: 1px;
+    border-bottom-color: #111111;
+    flex-direction:      row;
+    align-items:         center;
+    padding:             0 8px;
+    flex-shrink:         0;
 }
 
-.fsm-popup-content
-{
-	width: 300px;
-	height: 200px;
-	background-color: grey;
-	align-self: center;
-	justify-content: center;
-	align-content: center;
-	overflow: hidden;
-	border-radius: 5px;
+.fsm-toolbar__save-button {
+    height:    22px;
+    width:     60px;
+    font-size: 11px;
 }
 
-.fsm-popup-close
-{
-	position: absolute;
-	right: 0;
-	top: 0;
-	width: 20px;
-	height: 20px;
+.fsm-toolbar__asset-label {
+    margin-left:       10px;
+    color:             #aaaaaa;
+    font-size:         11px;
+    -unity-font-style: italic;
 }
 
-.fsm-popup-text
-{
-	color: rgb(0, 0, 0);
-	font-size: 20px;
-	text-overflow: clip;
-	align-self: center;
+/* Split view fills remaining space */
+.fsm-split {
+    flex: 1;
 }
 
-.fsm-popup-input
-{
-	width: 200px;
-	height: 30px;
-	margin: 10px;
-	align-self: center;
+/* Left column — graph on top, blackboard at bottom */
+.fsm-left {
+    flex:           1;
+    flex-direction: column;
+    min-width:      0;
 }
 
-.fsm-popup-confirm
-{
-	width: 100px;
-	height: 30px;
-	margin: 10px;
-	align-self: center;
+/* Graph container — relative so StretchToParentSize works */
+.fsm-graph-container {
+    flex:     1;
+    position: relative;
+    overflow: hidden;
+}
+
+/* ── Blackboard panel ───────────────────────────────────────────────── */
+.blackboard {
+    height:              180px;
+    background-color:    #252525;
+    border-top-width:    1px;
+    border-top-color:    #111111;
+    flex-direction:      column;
+    flex-shrink:         0;
+}
+
+.blackboard__header {
+    flex-direction:      row;
+    align-items:         center;
+    padding:             4px 8px;
+    background-color:    #1e1e1e;
+    border-bottom-width: 1px;
+    border-bottom-color: #111111;
+    flex-shrink:         0;
+}
+
+.blackboard__title {
+    flex:              1;
+    font-size:         12px;
+    color:             #cccccc;
+    -unity-font-style: bold;
+}
+
+.blackboard__add-button {
+    height:    20px;
+    font-size: 10px;
+    padding:   0 6px;
+}
+
+.blackboard__scroll {
+    flex: 1;
+}
+
+.blackboard__list {
+    padding: 2px 4px;
+}
+
+.blackboard__row {
+    flex-direction:      row;
+    align-items:         center;
+    height:              24px;
+    padding:             0 2px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255,255,255,0.05);
+}
+
+.blackboard__row:hover {
+    background-color: rgba(255,255,255,0.04);
+}
+
+.blackboard__type-badge {
+    width:               18px;
+    height:              18px;
+    border-radius:       3px;
+    -unity-text-align:   middle-center;
+    font-size:           10px;
+    -unity-font-style:   bold;
+    margin-right:        4px;
+    flex-shrink:         0;
+    cursor:              default;
+}
+
+.blackboard__type--trigger { background-color: #e74c3c; color: #fff; }
+.blackboard__type--bool    { background-color: #3498db; color: #fff; }
+.blackboard__type--int     { background-color: #2ecc71; color: #fff; }
+.blackboard__type--float   { background-color: #f39c12; color: #fff; }
+
+.blackboard__name-field {
+    flex:      1;
+    height:    20px;
+    font-size: 11px;
+}
+
+.blackboard__default-field {
+    width:       60px;
+    height:      20px;
+    font-size:   11px;
+    margin-left: 4px;
+}
+
+/* ── Predicate field sub-rows ───────────────────────────────────────── */
+.blackboard__predicate-fields {
+    flex-direction: column;
+    padding-left:   22px;
+    background-color: rgba(0,0,0,0.15);
+}
+
+.blackboard__predicate-field-row {
+    flex-direction:      row;
+    align-items:         center;
+    height:              22px;
+    padding:             0 2px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255,255,255,0.04);
+}
+
+.blackboard__predicate-field-label {
+    width:       80px;
+    font-size:   10px;
+    color:       #888888;
+    flex-shrink: 0;
+}
+
+.blackboard__predicate-field-control {
+    flex:      1;
+    height:    18px;
+    font-size: 10px;
+}
+
+.blackboard__predicate-inline-field {
+    height:    20px;
+    font-size: 10px;
+    min-width: 50px;
+    flex-shrink: 1;
+}
+
+/* Vector2 / Vector3 / Color / Object need extra room */
+.blackboard__predicate-inline-field.unity-vector2-field,
+.blackboard__predicate-inline-field.unity-vector3-field {
+    min-width: 120px;
+    flex:      1;
+}
+
+.blackboard__predicate-inline-field.unity-color-field {
+    min-width: 50px;
+    width:     50px;
+}
+
+.blackboard__predicate-inline-field.unity-object-field {
+    min-width: 80px;
+    flex:      1;
+}
+
+.blackboard__predicate-btn {
+    flex:              1;
+    height:            20px;
+    font-size:         10px;
+    -unity-text-align: middle-left;
+    -unity-font-style: italic;
+}
+
+.blackboard__remove-button {
+    width:            18px;
+    height:           18px;
+    font-size:        10px;
+    margin-left:      4px;
+    padding:          0;
+    flex-shrink:      0;
+    color:            #cc4444;
+    background-color: transparent;
+    border-color:     transparent;
+}
+
+/* ── Inspector panel ────────────────────────────────────────────────── */
+/* Width is controlled by TwoPaneSplitView — do NOT set a fixed width here */
+.fsm-inspector-panel {
+    background-color:    #2d2d2d;
+    border-left-width:   1px;
+    border-left-color:   #111111;
+    flex-direction:      column;
+    overflow:            hidden;
+    min-width:           260px;
+}
+
+.inspector__scroll {
+    max-height: 180px;
+}
+
+.inspector__empty-label {
+    color:             #666666;
+    font-size:         11px;
+    padding:           12px;
+    -unity-text-align: middle-center;
+    white-space:       normal;
+}
+
+.inspector__section-header {
+    background-color:  #1e1e1e;
+    color:             #888888;
+    font-size:         9px;
+    -unity-font-style: bold;
+    padding:           3px 8px;
+    border-top-width:  1px;
+    border-top-color:  #111111;
+    letter-spacing:    1.5px;
+}
+
+.inspector__row {
+    flex-direction:      row;
+    align-items:         center;
+    padding:             4px 8px;
+    min-height:          26px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255,255,255,0.04);
+}
+
+.inspector__row-label {
+    width:       90px;
+    font-size:   11px;
+    color:       #888888;
+    flex-shrink: 0;
+}
+
+.inspector__row-value {
+    flex:      1;
+    font-size: 11px;
+    color:     #cccccc;
+}
+
+.inspector__name-label {
+    flex:              1;
+    font-size:         12px;
+    color:             #ffffff;
+    -unity-font-style: bold;
+}
+
+.inspector__hint {
+    font-size:   10px;
+    color:       #666666;
+    padding:     4px 8px;
+    white-space: normal;
+}
+
+.inspector__list {
+    padding: 2px 4px;
+}
+
+/* Handler rows */
+.inspector__removable-row {
+    flex-direction:      row;
+    align-items:         center;
+    padding:             3px 8px;
+    height:              24px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255,255,255,0.04);
+}
+
+.inspector__removable-label {
+    flex:      1;
+    font-size: 11px;
+    color:     #cccccc;
+}
+
+/* Condition rows */
+.inspector__condition-row {
+    flex-direction:      row;
+    align-items:         center;
+    padding:             3px 4px;
+    min-height:          26px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255,255,255,0.04);
+    flex-wrap:           wrap;
+}
+
+.inspector__condition-param {
+    flex:      1;
+    min-width: 80px;
+    height:    20px;
+    font-size: 10px;
+}
+
+.inspector__condition-op {
+    width:       64px;
+    height:      20px;
+    font-size:   10px;
+    margin-left: 2px;
+}
+
+.inspector__condition-value {
+    width:       60px;
+    height:      20px;
+    font-size:   10px;
+    margin-left: 2px;
+}
+
+/* Shared buttons */
+.inspector__add-button {
+    margin:     4px 8px;
+    height:     22px;
+    font-size:  10px;
+    align-self: flex-start;
+}
+
+.inspector__condition-predicate-btn {
+    flex:        1;
+    height:      20px;
+    font-size:   10px;
+    margin-left: 2px;
+    -unity-text-align: middle-left;
+}
+
+.inspector__remove-button {
+    width:            18px;
+    height:           18px;
+    font-size:        10px;
+    padding:          0;
+    color:            #cc4444;
+    background-color: transparent;
+    border-color:     transparent;
+    flex-shrink:      0;
+}
+
+/* ── Inspector conditions block ─────────────────────────────────────── */
+.inspector__cond-block {
+    flex-direction: column;
 }
