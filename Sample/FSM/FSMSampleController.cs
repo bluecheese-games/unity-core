@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace BlueCheese.Core.FSM.Sample
 {
-    public class SampleController : MonoBehaviour
+    public class FSMSampleController : MonoBehaviour
     {
         [SerializeField] private TMP_Text _text;
         [SerializeField] private StateMachineController _fsmController;
