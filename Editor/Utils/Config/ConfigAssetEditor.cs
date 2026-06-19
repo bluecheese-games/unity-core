@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace BlueCheese.Core.Config.Editor
 {
-    [CustomEditor(typeof(ConfigAsset))]
+    [CustomEditor(typeof(ConfigAsset), isFallback = true)]
     public class ConfigAssetEditor : UnityEditor.Editor
     {
         private SerializedProperty _itemsProperty;

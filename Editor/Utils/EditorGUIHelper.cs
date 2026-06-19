@@ -100,7 +100,7 @@ namespace BlueCheese.Core.Editor
 			DrawSearchableKeyProperty(keyProperty, label, keys, null, maxItems);
 		}
 
-		public static void DrawSearchableKeyProperty(SerializedProperty keyProperty, GUIContent label, string[] keys, string[] labels, int maxItems = 0)
+		public static void DrawSearchableKeyProperty(SerializedProperty keyProperty, GUIContent label, string[] keys, string[] labels, int maxItems = 0, (GUIContent icon, System.Action action, bool enabled)[] extraButtons = null)
 		{
 			if (keys == null || keyProperty == null)
 			{
@@ -168,6 +168,18 @@ namespace BlueCheese.Core.Editor
 			{
 				// Use the new SearchKeyWindow overload with labels
 				SearchKeyWindow.Open(keyProperty, keys, effectiveLabels, propRect, maxItems);
+			}
+
+			if (extraButtons != null)
+			{
+				foreach (var (btnIcon, action, enabled) in extraButtons)
+				{
+					using (new EditorGUI.DisabledScope(!enabled))
+					{
+						if (GUILayout.Button(btnIcon, GUILayout.Width(30), GUILayout.Height(20)))
+							action?.Invoke();
+					}
+				}
 			}
 
 			EditorGUILayout.EndHorizontal();
