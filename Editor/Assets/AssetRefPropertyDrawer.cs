@@ -44,7 +44,23 @@ namespace BlueCheese.Core.Editor
 				_cache[genericType] = entry;
 			}
 
-			EditorGUIHelper.DrawSearchableKeyProperty(idProperty, label, entry.keys, entry.labels);
+			string guid = idProperty.stringValue;
+			string assetPath = string.IsNullOrEmpty(guid) ? null : AssetDatabase.GUIDToAssetPath(guid);
+			bool hasAsset = !string.IsNullOrEmpty(assetPath);
+
+			EditorGUIHelper.DrawSearchableKeyProperty(idProperty, label, entry.keys, entry.labels, extraButtons: new[]
+			{
+				(
+					new GUIContent(EditorIcon.Select, "Focus asset in Project"),
+					(System.Action)(() =>
+					{
+						var asset = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(assetPath);
+						EditorGUIUtility.PingObject(asset);
+						Selection.activeObject = asset;
+					}),
+					hasAsset
+				)
+			});
 		}
 
 		private Type GetGenericType()

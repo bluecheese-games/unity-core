@@ -41,5 +41,18 @@ namespace BlueCheese.Core.Config
             Boolean,
             Object,
         }
-    }
+
+        public T GetValue<T>(T defaultValue = default)
+        {
+            return Type switch
+            {
+                ValueType.String => (T)(object)StringValue,
+                ValueType.Int => (T)(object)IntValue,
+                ValueType.Float => (T)(object)FloatValue,
+                ValueType.Boolean => (T)(object)BoolValue,
+                ValueType.Object => (T)(object)ObjectValue,
+                _ => defaultValue
+            };
+		}
+	}
 }
