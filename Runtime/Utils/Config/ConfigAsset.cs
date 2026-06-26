@@ -15,6 +15,7 @@ namespace BlueCheese.Core.Config
 
 		private Dictionary<string, ConfigItem> _itemDictionary;
 
+#if UNITY_EDITOR
 		public override void OnRegister()
 		{
 			foreach (var item in Items)
@@ -22,6 +23,7 @@ namespace BlueCheese.Core.Config
 				item.Cleanup();
 			}
 		}
+#endif
 
 		private void EnsureDictionary()
 		{

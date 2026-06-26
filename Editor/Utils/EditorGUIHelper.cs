@@ -44,6 +44,7 @@ namespace BlueCheese.Core.Editor
 		// Styles
 		private static bool _initialized = false;
 		private static GUIStyle _textFieldWithIconStyle;
+		private static GUIStyle _clickableFieldStyle;
 		private static GUIStyle _titleStyle;
 
 		private static void InitStyles()
@@ -58,6 +59,13 @@ namespace BlueCheese.Core.Editor
 			{
 				normal = { background = null }, // Clear any background for the icon
 				padding = new RectOffset(25, 5, 2, 2), // Add padding to make room for the icon
+			};
+
+			// Read-only field: based on the editor text field so it aligns with native inspector rows
+			_clickableFieldStyle = new(EditorStyles.textField)
+			{
+				alignment = TextAnchor.MiddleLeft,
+				padding = new RectOffset(25, 5, 0, 0), // Left room for the icon; vertical centering handled by alignment
 			};
 
 			_titleStyle = new GUIStyle(EditorStyles.helpBox)
@@ -95,12 +103,50 @@ namespace BlueCheese.Core.Editor
 			return text;
 		}
 
+		// Draws a non-editable field with an icon at the given rect. Returns true when the user clicks it.
+		public static bool DrawClickableFieldWithIcon(Rect fieldRect, string text, Texture2D icon, Color? iconColor = null)
+		{
+			InitStyles();
+
+			GUI.Label(fieldRect, text, _clickableFieldStyle);
+
+			if (icon != null)
+			{
+				var iconRect = new Rect(fieldRect.x + 3, fieldRect.y + (fieldRect.height - 16) * 0.5f, 16, 16); // Icon size and position
+				var color = GUI.color;
+				if (iconColor.HasValue)
+				{
+					GUI.color = iconColor.Value;
+				}
+				GUI.DrawTexture(iconRect, icon);
+				GUI.color = color;
+			}
+
+			EditorGUIUtility.AddCursorRect(fieldRect, MouseCursor.Link);
+
+			var evt = Event.current;
+			bool clicked = evt.type == EventType.MouseDown && evt.button == 0 && fieldRect.Contains(evt.mousePosition);
+			if (clicked)
+			{
+				evt.Use();
+			}
+
+			return clicked;
+		}
+
+		// Layout variant: reserves a control rect then draws the clickable field.
+		public static bool DrawClickableFieldWithIcon(string text, Texture2D icon, out Rect fieldRect, Color? iconColor = null)
+		{
+			fieldRect = EditorGUILayout.GetControlRect();
+			return DrawClickableFieldWithIcon(fieldRect, text, icon, iconColor);
+		}
+
 		public static void DrawSearchableKeyProperty(SerializedProperty keyProperty, GUIContent label, string[] keys, int maxItems = 0)
 		{
 			DrawSearchableKeyProperty(keyProperty, label, keys, null, maxItems);
 		}
 
-		public static void DrawSearchableKeyProperty(SerializedProperty keyProperty, GUIContent label, string[] keys, string[] labels, int maxItems = 0, (GUIContent icon, System.Action action, bool enabled)[] extraButtons = null)
+		public static void DrawSearchableKeyProperty(SerializedProperty keyProperty, GUIContent label, string[] keys, string[] labels, int maxItems = 0)
 		{
 			if (keys == null || keyProperty == null)
 			{
@@ -108,34 +154,7 @@ namespace BlueCheese.Core.Editor
 				return;
 			}
 
-			// Validate labels array (must match keys length)
-			string[] effectiveLabels = (labels != null && labels.Length == keys.Length) ? labels : null;
-
-			// Build quick lookups if we have valid labels
-			Dictionary<string, int> labelToIndex = null;
-			Dictionary<string, int> keyToIndex = null;
-
-			keyToIndex = new Dictionary<string, int>(keys.Length);
-			for (int i = 0; i < keys.Length; i++)
-				if (!keyToIndex.ContainsKey(keys[i])) keyToIndex.Add(keys[i], i);
-
-			if (effectiveLabels != null)
-			{
-				labelToIndex = new Dictionary<string, int>(effectiveLabels.Length);
-				for (int i = 0; i < effectiveLabels.Length; i++)
-					if (!labelToIndex.ContainsKey(effectiveLabels[i])) labelToIndex.Add(effectiveLabels[i], i);
-			}
-
-			// Determine what to display in the text field: label (preferred) or raw key text
-			string currentKey = keyProperty.stringValue;
-			bool keyIsValid = keyToIndex.ContainsKey(currentKey);
-
-			string displayText = currentKey;
-			if (keyIsValid && effectiveLabels != null)
-			{
-				int idx = keyToIndex[currentKey];
-				displayText = effectiveLabels[idx];
-			}
+			ResolveKeyDisplay(keyProperty, keys, labels, out string[] effectiveLabels, out string displayText, out bool keyIsValid);
 
 			EditorGUILayout.BeginHorizontal();
 			EditorGUILayout.PrefixLabel(label);
@@ -143,46 +162,53 @@ namespace BlueCheese.Core.Editor
 			var icon = keyIsValid ? EditorIcon.Valid : EditorIcon.Warning;
 			var color = keyIsValid ? Color.green : Color.white;
 
-			// Draw text field showing the "label" if available
-			string editedText = DrawTextfieldWithIcon(displayText, icon, color);
-
-			// Map edited text back to a key:
-			// 1) Exact match on label -> set the corresponding key
-			// 2) Exact match on key -> set that key
-			// 3) Otherwise, store the raw input (remains invalid until it matches a key/label)
-			if (effectiveLabels != null && labelToIndex.TryGetValue(editedText, out int labelIdx))
+			// Clicking the (read-only) field opens the search dropdown
+			if (DrawClickableFieldWithIcon(displayText, icon, out Rect fieldRect, color))
 			{
-				keyProperty.stringValue = keys[labelIdx];
-			}
-			else if (keyToIndex.TryGetValue(editedText, out int keyIdx))
-			{
-				keyProperty.stringValue = keys[keyIdx];
-			}
-			else
-			{
-				keyProperty.stringValue = editedText; // may be invalid; shows warning icon
-			}
-
-			var propRect = GUIUtility.GUIToScreenRect(GUILayoutUtility.GetLastRect());
-			if (GUILayout.Button(new GUIContent(EditorIcon.Search), GUILayout.Width(30), GUILayout.Height(20)))
-			{
-				// Use the new SearchKeyWindow overload with labels
+				var propRect = GUIUtility.GUIToScreenRect(fieldRect);
 				SearchKeyWindow.Open(keyProperty, keys, effectiveLabels, propRect, maxItems);
 			}
 
-			if (extraButtons != null)
+			EditorGUILayout.EndHorizontal();
+		}
+
+		// Rect variant: draws at the given position. Use this in PropertyDrawers so the field aligns
+		// pixel-perfectly with the surrounding inspector rows.
+		public static void DrawSearchableKeyProperty(Rect position, SerializedProperty keyProperty, GUIContent label, string[] keys, string[] labels = null, int maxItems = 0)
+		{
+			if (keys == null || keyProperty == null)
 			{
-				foreach (var (btnIcon, action, enabled) in extraButtons)
-				{
-					using (new EditorGUI.DisabledScope(!enabled))
-					{
-						if (GUILayout.Button(btnIcon, GUILayout.Width(30), GUILayout.Height(20)))
-							action?.Invoke();
-					}
-				}
+				EditorGUI.PropertyField(position, keyProperty, label);
+				return;
 			}
 
-			EditorGUILayout.EndHorizontal();
+			ResolveKeyDisplay(keyProperty, keys, labels, out string[] effectiveLabels, out string displayText, out bool keyIsValid);
+
+			var icon = keyIsValid ? EditorIcon.Valid : EditorIcon.Warning;
+			var color = keyIsValid ? Color.green : Color.white;
+
+			Rect fieldRect = EditorGUI.PrefixLabel(position, label);
+
+			// Clicking the (read-only) field opens the search dropdown
+			if (DrawClickableFieldWithIcon(fieldRect, displayText, icon, color))
+			{
+				var propRect = GUIUtility.GUIToScreenRect(fieldRect);
+				SearchKeyWindow.Open(keyProperty, keys, effectiveLabels, propRect, maxItems);
+			}
+		}
+
+		// Validates the current key and resolves the text to display (label when available, else raw key).
+		private static void ResolveKeyDisplay(SerializedProperty keyProperty, string[] keys, string[] labels, out string[] effectiveLabels, out string displayText, out bool keyIsValid)
+		{
+			effectiveLabels = (labels != null && labels.Length == keys.Length) ? labels : null;
+
+			var keyToIndex = new Dictionary<string, int>(keys.Length);
+			for (int i = 0; i < keys.Length; i++)
+				if (!keyToIndex.ContainsKey(keys[i])) keyToIndex.Add(keys[i], i);
+
+			string currentKey = keyProperty.stringValue;
+			keyIsValid = keyToIndex.TryGetValue(currentKey, out int currentIndex);
+			displayText = (keyIsValid && effectiveLabels != null) ? effectiveLabels[currentIndex] : currentKey;
 		}
 
 		public static void DrawTitle(string title)

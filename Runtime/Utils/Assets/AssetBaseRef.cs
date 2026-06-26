@@ -21,6 +21,7 @@ namespace BlueCheese.Core.Utils
 		public string TypeName;
 		public Tags Tags;
 		public AssetLoadMode LoadMode = AssetLoadMode.Resources;
+		public string BundleKey;
 
 		public bool IsValid => !string.IsNullOrWhiteSpace(Guid) && !string.IsNullOrWhiteSpace(TypeName);
 
@@ -48,11 +49,12 @@ namespace BlueCheese.Core.Utils
 		{
 			return new AssetBaseRef
 			{
-				Name     = asset.Name,
-				Guid     = asset.Guid,
-				TypeName = asset.TypeName,
-				Tags     = asset.Tags,
-				LoadMode = asset.LoadMode,
+				Name      = asset.Name,
+				Guid      = asset.Guid,
+				TypeName  = asset.TypeName,
+				Tags      = asset.Tags,
+				LoadMode  = asset.LoadMode,
+				BundleKey = asset.BundleKey,
 			};
 		}
 #endif

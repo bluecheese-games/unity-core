@@ -18,10 +18,19 @@ namespace BlueCheese.Core.Editor
 		// Invalidated when the project changes (e.g. after an AssetBank regeneration).
 		private static readonly Dictionary<Type, (string[] keys, string[] labels)> _cache = new();
 
+		// Native Unity object-field selector button visual.
+		private static GUIStyle _selectButtonStyle;
+
 		static AssetRefPropertyDrawer()
 		{
 			EditorApplication.projectChanged += _cache.Clear;
 		}
+
+		private const float SelectButtonWidth = 19f;
+		private const float SelectButtonSpacing = 2f;
+
+		public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+			=> EditorGUIUtility.singleLineHeight;
 
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
@@ -40,7 +49,11 @@ namespace BlueCheese.Core.Editor
 					.Where(a => a.Type == genericType)
 					.Select(a => (a.Guid, a.Name))
 					.ToArray();
-				entry = (items.Select(i => i.Guid).ToArray(), items.Select(i => i.Name).ToArray());
+				// Prepend a "None" entry mapping to an empty Guid so the reference can be cleared.
+				entry = (
+					items.Select(i => i.Guid).Prepend(string.Empty).ToArray(),
+					items.Select(i => i.Name).Prepend("None").ToArray()
+				);
 				_cache[genericType] = entry;
 			}
 
@@ -48,19 +61,23 @@ namespace BlueCheese.Core.Editor
 			string assetPath = string.IsNullOrEmpty(guid) ? null : AssetDatabase.GUIDToAssetPath(guid);
 			bool hasAsset = !string.IsNullOrEmpty(assetPath);
 
-			EditorGUIHelper.DrawSearchableKeyProperty(idProperty, label, entry.keys, entry.labels, extraButtons: new[]
+			_selectButtonStyle ??= GUI.skin.FindStyle("ObjectFieldButton") ?? new GUIStyle(EditorStyles.miniButton);
+
+			// Split the line into the searchable field + a trailing "focus" button.
+			var fieldRect = new Rect(position.x, position.y, position.width - SelectButtonWidth - SelectButtonSpacing, position.height);
+			var buttonRect = new Rect(position.xMax - SelectButtonWidth, position.y, SelectButtonWidth, position.height);
+
+			EditorGUIHelper.DrawSearchableKeyProperty(fieldRect, idProperty, label, entry.keys, entry.labels);
+
+			using (new EditorGUI.DisabledScope(!hasAsset))
 			{
-				(
-					new GUIContent(EditorIcon.Select, "Focus asset in Project"),
-					(System.Action)(() =>
-					{
-						var asset = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(assetPath);
-						EditorGUIUtility.PingObject(asset);
-						Selection.activeObject = asset;
-					}),
-					hasAsset
-				)
-			});
+				if (GUI.Button(buttonRect, new GUIContent(string.Empty, "Focus asset in Project"), _selectButtonStyle))
+				{
+					var asset = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(assetPath);
+					EditorGUIUtility.PingObject(asset);
+					Selection.activeObject = asset;
+				}
+			}
 		}
 
 		private Type GetGenericType()
