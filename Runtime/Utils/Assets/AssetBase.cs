@@ -13,6 +13,10 @@ namespace BlueCheese.Core.Utils
 		[HideInInspector] public bool RegisterInAssetBank = true;
 		[HideInInspector] public AssetLoadMode LoadMode = AssetLoadMode.Resources;
 
+		// Addressables only: assets sharing a bundle key are packed into the same bundle.
+		// Empty means the shared default AssetBank group.
+		[HideInInspector] public string BundleKey = string.Empty;
+
 		private string _guid;
 		private string _typeName;
 
@@ -49,7 +53,7 @@ namespace BlueCheese.Core.Utils
 			}
 		}
 
-		protected void OnValidate()
+		protected virtual void OnValidate()
 		{
 			if (string.IsNullOrEmpty(Name))
 			{

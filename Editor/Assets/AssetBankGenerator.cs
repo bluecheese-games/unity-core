@@ -8,12 +8,20 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
+#if UNITY_ADDRESSABLES
+using UnityEditor.AddressableAssets.Settings;
+using UnityEditor.AddressableAssets.Settings.GroupSchemas;
+#endif
+
 namespace BlueCheese.Core.Editor
 {
 	[InitializeOnLoad]
 	public static class AssetBankGenerator
 	{
+		private const float MinIntervalSeconds = 1f;
+
 		private static float _lastGenTime = 0;
+		private static bool _regenPending = false;
 
 		static AssetBankGenerator()
 		{
@@ -30,9 +38,20 @@ namespace BlueCheese.Core.Editor
 				return;
 			}
 
-			// Prevent multiple regenerations in a short time
-			if (_lastGenTime > 0 && Time.realtimeSinceStartup - _lastGenTime < 1)
+			// Debounce: if a regeneration just ran, defer this one to the next editor tick
+			// instead of dropping it, so the final project state is always reflected.
+			if (_lastGenTime > 0 && Time.realtimeSinceStartup - _lastGenTime < MinIntervalSeconds)
 			{
+				if (_regenPending)
+				{
+					return;
+				}
+				_regenPending = true;
+				EditorApplication.delayCall += () =>
+				{
+					_regenPending = false;
+					Regenerate();
+				};
 				return;
 			}
 			_lastGenTime = Time.realtimeSinceStartup;
@@ -69,25 +88,120 @@ namespace BlueCheese.Core.Editor
 			var settings = UnityEditor.AddressableAssets.AddressableAssetSettingsDefaultObject.Settings;
 			if (settings == null) return;
 
+			bool changed = false;
 			foreach (var asset in assets)
 			{
 				if (asset.LoadMode != BlueCheese.Core.Utils.AssetLoadMode.Addressables) continue;
 
 				string guid = asset.Guid;
+
+				// Route the asset to the group matching its bundle key (one bundle per key).
+				var group = GetOrCreateGroup(settings, GetGroupName(asset.BundleKey), ref changed);
+
 				var entry = settings.FindAssetEntry(guid);
-				if (entry == null)
-					entry = settings.CreateOrMoveEntry(guid, settings.DefaultGroup, postEvent: false);
+				if (entry == null || entry.parentGroup != group)
+				{
+					entry = settings.CreateOrMoveEntry(guid, group, postEvent: false);
+					changed = true;
+				}
 
 				// Use the GUID as the address so AssetBaseRef can load by GUID at runtime.
 				if (entry.address != guid)
 				{
 					entry.address = guid;
-					UnityEditor.EditorUtility.SetDirty(settings);
+					changed = true;
 				}
+
+				// Mirror the asset tags onto Addressables labels so assets are queryable by tag.
+				// An asset can carry several labels (one per tag).
+				changed |= SyncLabels(entry, (string[])asset.Tags);
 			}
 
-			UnityEditor.AssetDatabase.SaveAssets();
+			// Drop managed groups left empty (e.g. after a bundle key changed) to avoid clutter.
+			RemoveEmptyManagedGroups(settings, ref changed);
+
+			// Avoid dirtying and saving the whole project on every regeneration when nothing changed.
+			if (changed)
+			{
+				UnityEditor.EditorUtility.SetDirty(settings);
+				UnityEditor.AssetDatabase.SaveAssets();
+			}
 #endif
 		}
+
+#if UNITY_ADDRESSABLES
+		internal const string AddressableGroupPrefix = "AssetBank";
+		internal const string DefaultAddressableGroup = AddressableGroupPrefix + "_Default";
+
+		// Assets without a bundle key share the default group; keyed assets get their own group.
+		private static string GetGroupName(string bundleKey) =>
+			string.IsNullOrWhiteSpace(bundleKey) ? DefaultAddressableGroup : $"{AddressableGroupPrefix}_{bundleKey}";
+
+		// Finds or creates the group and forces it to pack into a single bundle (Pack Together).
+		private static AddressableAssetGroup GetOrCreateGroup(AddressableAssetSettings settings, string name, ref bool changed)
+		{
+			var group = settings.FindGroup(name);
+			if (group == null)
+			{
+				group = settings.CreateGroup(name, setAsDefaultGroup: false, readOnly: false, postEvent: false,
+					schemasToCopy: null, typeof(BundledAssetGroupSchema), typeof(ContentUpdateGroupSchema));
+				changed = true;
+			}
+
+			var schema = group.GetSchema<BundledAssetGroupSchema>();
+			if (schema == null)
+			{
+				schema = group.AddSchema<BundledAssetGroupSchema>();
+				changed = true;
+			}
+
+			if (schema.BundleMode != BundledAssetGroupSchema.BundlePackingMode.PackTogether)
+			{
+				schema.BundleMode = BundledAssetGroupSchema.BundlePackingMode.PackTogether;
+				changed = true;
+			}
+
+			return group;
+		}
+
+		// Removes empty groups previously created by this generator, keeping the project tidy.
+		private static void RemoveEmptyManagedGroups(AddressableAssetSettings settings, ref bool changed)
+		{
+			foreach (var group in settings.groups.ToArray())
+			{
+				if (group == null || group == settings.DefaultGroup) continue;
+				if (!group.Name.StartsWith(AddressableGroupPrefix)) continue;
+				if (group.entries.Count > 0) continue;
+
+				settings.RemoveGroup(group);
+				changed = true;
+			}
+		}
+
+		// Makes the entry's labels match exactly the asset's tags. The label is created in the
+		// Addressables settings on demand (force: true). Returns true if anything changed.
+		private static bool SyncLabels(AddressableAssetEntry entry, string[] tags)
+		{
+			bool changed = false;
+			var desired = new HashSet<string>(tags ?? System.Array.Empty<string>());
+
+			foreach (string tag in desired)
+			{
+				if (string.IsNullOrEmpty(tag) || entry.labels.Contains(tag)) continue;
+				entry.SetLabel(tag, enable: true, force: true, postEvent: false);
+				changed = true;
+			}
+
+			// Remove labels that are no longer tags (copy first: SetLabel mutates entry.labels).
+			foreach (string label in entry.labels.ToArray())
+			{
+				if (desired.Contains(label)) continue;
+				entry.SetLabel(label, enable: false, force: false, postEvent: false);
+				changed = true;
+			}
+
+			return changed;
+		}
+#endif
 	}
 }

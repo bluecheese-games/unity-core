@@ -20,6 +20,8 @@ namespace BlueCheese.Core.Utils
 		UniTask<T> GetAssetByGuidAsync<T>(string guid) where T : AssetBase;
 
 		T GetAssetByName<T>(string name) where T : AssetBase;
+		bool TryGetAssetByName<T>(string name, out T asset) where T : AssetBase;
+		UniTask<T> GetAssetByNameAsync<T>(string name) where T : AssetBase;
 
 		T GetAssetOfType<T>() where T : AssetBase;
 		UniTask<T> GetAssetOfTypeAsync<T>() where T : AssetBase;

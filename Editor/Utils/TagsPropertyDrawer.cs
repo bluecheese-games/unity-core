@@ -267,6 +267,10 @@ namespace BlueCheese.Core.Editor
 			tagsProperty.serializedObject.ApplyModifiedProperties();
 			_layouts.Remove(path);
 			TagRegistry.Invalidate();
+
+			// Keep the AssetBank in sync when a tag is added on an asset (deferred, debounced).
+			if (tagsProperty.serializedObject.targetObject is AssetBase)
+				EditorApplication.delayCall += AssetBankGenerator.Regenerate;
 		}
 
 		// ── Layout ────────────────────────────────────────────────────────────
