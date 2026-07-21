@@ -19,6 +19,7 @@ namespace BlueCheese.Core.Editor
 		public static Texture2D Stop => GetTexture("d_PauseButton");
 		public static Texture2D Restart => GetTexture("Refresh");
 		public static Texture2D Warning => GetTexture("d_console.warnicon.sml");
+		public static Texture2D Edit => GetTexture("d_editicon.sml");
 		public static Texture2D Skybox => GetTexture("d_ReflectionProbe Icon");
 		public static Texture2D Menu => GetTexture("d__Menu");
 		public static Texture2D Open => GetTexture("d_FolderOpened Icon");
@@ -174,7 +175,7 @@ namespace BlueCheese.Core.Editor
 
 		// Rect variant: draws at the given position. Use this in PropertyDrawers so the field aligns
 		// pixel-perfectly with the surrounding inspector rows.
-		public static void DrawSearchableKeyProperty(Rect position, SerializedProperty keyProperty, GUIContent label, string[] keys, string[] labels = null, int maxItems = 0)
+		public static void DrawSearchableKeyProperty(Rect position, SerializedProperty keyProperty, GUIContent label, string[] keys, string[] labels = null, int maxItems = 0, System.Action<string> onCreateNew = null)
 		{
 			if (keys == null || keyProperty == null)
 			{
@@ -187,13 +188,16 @@ namespace BlueCheese.Core.Editor
 			var icon = keyIsValid ? EditorIcon.Valid : EditorIcon.Warning;
 			var color = keyIsValid ? Color.green : Color.white;
 
-			Rect fieldRect = EditorGUI.PrefixLabel(position, label);
+			// When no label is supplied (the caller already drew its own prefix), fill the whole rect
+			// instead of reserving a label column.
+			bool hasLabel = label != null && label != GUIContent.none && (!string.IsNullOrEmpty(label.text) || label.image != null);
+			Rect fieldRect = hasLabel ? EditorGUI.PrefixLabel(position, label) : position;
 
 			// Clicking the (read-only) field opens the search dropdown
 			if (DrawClickableFieldWithIcon(fieldRect, displayText, icon, color))
 			{
 				var propRect = GUIUtility.GUIToScreenRect(fieldRect);
-				SearchKeyWindow.Open(keyProperty, keys, effectiveLabels, propRect, maxItems);
+				SearchKeyWindow.Open(keyProperty, keys, effectiveLabels, propRect, maxItems, onCreateNew);
 			}
 		}
 
@@ -207,8 +211,11 @@ namespace BlueCheese.Core.Editor
 				if (!keyToIndex.ContainsKey(keys[i])) keyToIndex.Add(keys[i], i);
 
 			string currentKey = keyProperty.stringValue;
-			keyIsValid = keyToIndex.TryGetValue(currentKey, out int currentIndex);
-			displayText = (keyIsValid && effectiveLabels != null) ? effectiveLabels[currentIndex] : currentKey;
+			bool found = keyToIndex.TryGetValue(currentKey, out int currentIndex);
+			// An empty key is never valid (e.g. a "None" selection): show the warning icon,
+			// while still resolving its display label when the entry is present in the list.
+			keyIsValid = found && !string.IsNullOrEmpty(currentKey);
+			displayText = (found && effectiveLabels != null) ? effectiveLabels[currentIndex] : currentKey;
 		}
 
 		public static void DrawTitle(string title)
