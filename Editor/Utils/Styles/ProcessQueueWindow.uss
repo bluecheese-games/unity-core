@@ -1,0 +1,136 @@
+/* ── Window layout ──────────────────────────────────────────────────── */
+.pqw-root {
+    flex: 1;
+    padding: 8px;
+}
+
+.pqw-header {
+    flex-direction: row;
+    align-items:    center;
+    height:         20px;
+    margin-bottom:  6px;
+}
+
+.pqw-header__status {
+    flex:              1;
+    font-size:         12px;
+    -unity-font-style: bold;
+}
+
+.pqw-header__status--cancelled {
+    color: #ff4d4d;
+}
+
+.pqw-header__timer {
+    font-size:         12px;
+    -unity-text-align: middle-right;
+}
+
+.pqw-progress {
+    margin-bottom: 8px;
+}
+
+.pqw-tasks-label {
+    -unity-font-style: bold;
+    margin-bottom:      4px;
+}
+
+.pqw-scroll {
+    flex:             1;
+    background-color: rgba(0, 0, 0, 0.1);
+    border-width:     1px;
+    border-color:     rgba(0, 0, 0, 0.25);
+}
+
+.pqw-empty-label {
+    -unity-text-align: middle-center;
+    color:             #888888;
+    padding:           12px;
+}
+
+/* ── Task rows ───────────────────────────────────────────────────────── */
+.pqw-group {
+    flex-direction: column;
+}
+
+.pqw-group-row {
+    flex-direction: row;
+    align-items:    center;
+    height:         20px;
+    padding:        0 4px;
+}
+
+.pqw-group-row__icon {
+    width:             20px;
+    -unity-text-align: middle-center;
+}
+
+.pqw-group-row__name {
+    flex: 1;
+}
+
+.pqw-group-row__duration {
+    color:             #888888;
+    -unity-text-align: middle-right;
+    min-width:         50px;
+}
+
+.pqw-sub-row {
+    flex-direction: row;
+    align-items:    center;
+    height:         18px;
+    padding-left:   30px;
+}
+
+.pqw-sub-row__icon {
+    width:             15px;
+    font-size:         10px;
+    -unity-text-align: middle-center;
+}
+
+.pqw-sub-row__name {
+    font-size: 10px;
+}
+
+/* ── Status color modifiers, shared by group rows and sub rows ────────── */
+.pqw-status--pending {
+    color: #808080;
+}
+
+.pqw-status--running {
+    color:             #4da6ff;
+    -unity-font-style: bold;
+}
+
+.pqw-status--done {
+    color: #33cc33;
+}
+
+.pqw-status--cancelled {
+    color:             #ff4d4d;
+    -unity-font-style: bold;
+}
+
+.pqw-status--failed {
+    color:             #ff6666;
+    -unity-font-style: bold;
+}
+
+.pqw-status--warning {
+    color:             #ffbf40;
+    -unity-font-style: bold;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────── */
+.pqw-footer-button {
+    height:     30px;
+    margin-top: 10px;
+}
+
+.pqw-footer-button--start {
+    background-color: #2e8b3d;
+}
+
+.pqw-footer-button--cancel {
+    background-color: #a63b3b;
+}

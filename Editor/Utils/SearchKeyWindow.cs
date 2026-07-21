@@ -2,6 +2,7 @@
 // Copyright (c) 2026 BlueCheese Games All rights reserved
 //
 
+using System;
 using UnityEditor;
 using UnityEngine;
 
@@ -14,7 +15,7 @@ namespace BlueCheese.Core.Editor
 			Open(targetProperty, keys, null, rect, maxItems);
 		}
 
-		public static void Open(SerializedProperty targetProperty, string[] keys, string[] labels, Rect rect, int maxItems = 0)
+		public static void Open(SerializedProperty targetProperty, string[] keys, string[] labels, Rect rect, int maxItems = 0, Action<string> onCreateNew = null)
 		{
 			if (keys == null) return;
 
@@ -28,6 +29,7 @@ namespace BlueCheese.Core.Editor
 			window._keys = keys;
 			window._labels = (labels != null && labels.Length == keys.Length) ? labels : null; // null => fallback to keys
 			window._maxItems = maxItems;
+			window._onCreateNew = onCreateNew;
 
 			float itemHeight = 20f;
 			float height = maxItems > 0 ? 27f + itemHeight * maxItems : 140f;
@@ -41,6 +43,7 @@ namespace BlueCheese.Core.Editor
 		private Vector2 _scrollPosition;
 		private int _maxItems;
 		private GUIStyle _keyStyle;
+		private Action<string> _onCreateNew; // optional: offered when the search matches nothing
 
 		private void OnGUI()
 		{
@@ -64,9 +67,21 @@ namespace BlueCheese.Core.Editor
 
 			if (_keys != null)
 			{
-				int shown = 0;
 				string searchText = _searchText != null ? _searchText.ToLowerInvariant() : null;
 
+				// When nothing matches, offer to create a new key from the typed text (if enabled).
+				if (_onCreateNew != null && !string.IsNullOrWhiteSpace(_searchText) && !HasMatches(searchText))
+				{
+					if (GUILayout.Button($"＋ Create new key: \"{_searchText.Trim()}\""))
+					{
+						var newKey = _searchText.Trim();
+						Close();
+						_onCreateNew(newKey);
+						return;
+					}
+				}
+
+				int shown = 0;
 				_scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
 
 				for (int i = 0; i < _keys.Length; i++)
@@ -75,12 +90,7 @@ namespace BlueCheese.Core.Editor
 					// Use label if provided and valid, otherwise fallback to key
 					string label = (_labels != null) ? _labels[i] : key;
 
-					bool matches = string.IsNullOrWhiteSpace(searchText) ||
-								   (!string.IsNullOrEmpty(label) && label.ToLowerInvariant().Contains(searchText)) ||
-								   // Fallback safety: if label is empty for any reason, allow key search
-								   (string.IsNullOrEmpty(label) && key.ToLowerInvariant().Contains(searchText));
-
-					if (matches)
+					if (IsMatch(label, key, searchText))
 					{
 						shown++;
 						// Show label; store key. Tooltip shows the key for clarity.
@@ -103,6 +113,27 @@ namespace BlueCheese.Core.Editor
 			}
 
 			EditorGUI.FocusTextInControl("search-text");
+		}
+
+		private bool HasMatches(string searchText)
+		{
+			for (int i = 0; i < _keys.Length; i++)
+			{
+				string label = (_labels != null) ? _labels[i] : _keys[i];
+				if (IsMatch(label, _keys[i], searchText))
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
+		private static bool IsMatch(string label, string key, string searchText)
+		{
+			if (string.IsNullOrWhiteSpace(searchText)) return true;
+			if (!string.IsNullOrEmpty(label) && label.ToLowerInvariant().Contains(searchText)) return true;
+			if (string.IsNullOrEmpty(label) && key.ToLowerInvariant().Contains(searchText)) return true;
+			return false;
 		}
 	}
 

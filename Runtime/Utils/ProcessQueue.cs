@@ -111,6 +111,12 @@ namespace BlueCheese.Core.Utils
 		public event Action<int, Exception> StepFailed;
 
 		/// <summary>
+		/// Fired when the currently running step reports a non-blocking warning via <see cref="ReportWarning"/>.
+		/// Arguments: Step Index (0-based relative to run), warning message.
+		/// </summary>
+		public event Action<int, string> StepWarning;
+
+		/// <summary>
 		/// Fired when a sub-task within a parallel step finishes.
 		/// Arguments: Main Step Index, Sub Task Index.
 		/// </summary>
@@ -207,6 +213,15 @@ namespace BlueCheese.Core.Utils
 
 			_items.Enqueue(new Item(name, asyncAction: parallelWrapper, isParallel: true, subStepNames: subNames));
 			return this;
+		}
+
+		/// <summary>
+		/// Lets the currently running step report a non-blocking warning. Must be called from
+		/// within that step's action/asyncAction; the step still counts as successful.
+		/// </summary>
+		public void ReportWarning(string message)
+		{
+			StepWarning?.Invoke(_processedCount, message);
 		}
 
 		private void CheckProcessing()
