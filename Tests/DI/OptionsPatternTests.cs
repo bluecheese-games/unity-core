@@ -56,10 +56,13 @@ namespace BlueCheese.Tests.DI
 		{
 			// Arrange
 			_container.Register<AudioService>();
-			_container.Configure<AudioOptions>(opt =>
+			_container.Configure<AudioOptions>(() =>
 			{
-				opt.Volume = 0.5f;
-				opt.UseSpatial = true;
+				return new()
+				{
+					Volume = 0.5f,
+					UseSpatial = true 
+				};
 			});
 
 			// Act
@@ -74,7 +77,7 @@ namespace BlueCheese.Tests.DI
 		public void Resolve_IOptionsDirectly_ReturnsWrapper()
 		{
 			// Arrange
-			_container.Configure<AudioOptions>(opt => opt.Volume = 0.2f);
+			_container.Configure<AudioOptions>(() => new() { Volume = 0.2f });
 
 			// Act
 			var options = _container.Resolve<IOptions<AudioOptions>>();
@@ -89,7 +92,7 @@ namespace BlueCheese.Tests.DI
 		{
 			// Arrange
 			_container.Register<AudioService>();
-			_container.Configure<AudioOptions>(opt => opt.Volume = 0.1f);
+			_container.Configure<AudioOptions>(() => new() { Volume = 0.1f });
 
 			// Act
 			var service1 = _container.Resolve<AudioService>();
@@ -98,65 +101,6 @@ namespace BlueCheese.Tests.DI
 			// Assert
 			Assert.AreEqual(0.1f, service1.Settings.Volume);
 			Assert.AreEqual(0.1f, service2.Value.Volume);
-		}
-
-		[Test]
-		public void Resolve_ChildContainerWithNoConfig_InheritsParentConfig()
-		{
-			// Arrange
-			var parent = new ServiceContainer();
-			parent.Configure<AudioOptions>(opt => opt.Volume = 0.3f);
-
-			var child = new ServiceContainer(parent);
-
-			// Act
-			var options = child.Resolve<IOptions<AudioOptions>>();
-
-			// Assert
-			Assert.AreEqual(0.3f, options.Value.Volume);
-		}
-
-		[Test]
-		public void Resolve_ChildContainerOverridesParentConfig_BothAppliedAdditively()
-		{
-			// Arrange
-			var parent = new ServiceContainer();
-			parent.Configure<AudioOptions>(opt =>
-			{
-				opt.Volume = 0.8f;
-				opt.UseSpatial = true;
-			});
-
-			var child = new ServiceContainer(parent);
-			child.Configure<AudioOptions>(opt => opt.Volume = 0.4f);
-
-			// Act
-			var options = child.Resolve<IOptions<AudioOptions>>();
-
-			// Assert
-			Assert.AreEqual(0.4f, options.Value.Volume);
-			Assert.IsTrue(options.Value.UseSpatial);
-		}
-
-		[Test]
-		public void Resolve_ThreeLevelContainerChain_AllConfigsAppliedInOrder()
-		{
-			// Arrange
-			var grandparent = new ServiceContainer();
-			grandparent.Configure<AudioOptions>(opt => opt.Volume = 1.0f);
-
-			var parent = new ServiceContainer(grandparent);
-			parent.Configure<AudioOptions>(opt => opt.UseSpatial = true);
-
-			var child = new ServiceContainer(parent);
-			child.Configure<AudioOptions>(opt => opt.Volume = 0.5f);
-
-			// Act
-			var options = child.Resolve<IOptions<AudioOptions>>();
-
-			// Assert
-			Assert.AreEqual(0.5f, options.Value.Volume);
-			Assert.IsTrue(options.Value.UseSpatial);
 		}
 	}
 }

@@ -287,23 +287,6 @@ namespace BlueCheese.Tests.DI
 		}
 
 		[Test]
-		public void Resolve_ChildDelegatingToParent_DoesNotTriggerCircularDetection()
-		{
-			// Arrange
-			var parent = new ServiceContainer();
-			parent.Register<IEngine, Engine>().AsSingleton();
-
-			var child = new ServiceContainer(parent);
-
-			// Act
-			var resolved = child.Resolve<IEngine>();
-
-			// Assert
-			Assert.IsNotNull(resolved);
-			Assert.IsInstanceOf<Engine>(resolved);
-		}
-
-		[Test]
 		public void Dispose_FaultyService_ThrowsAggregateException()
 		{
 			// Arrange
