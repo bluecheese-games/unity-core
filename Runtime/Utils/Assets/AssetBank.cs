@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace BlueCheese.Core.Utils
 {
-	[CreateAssetMenu(menuName = "AssetBank", fileName = "AssetBank")]
+	[CreateAssetMenu(menuName = "BlueCheese/Asset Bank", fileName = "AssetBank")]
 	public class AssetBank : ScriptableObject, IAssetBank
 	{
 		public const string AssetBankResourcePath = "AssetBank";

@@ -11,7 +11,7 @@ namespace BlueCheese.Core.Editor
 	/// <summary>
 	/// ScriptableObject asset that holds recorded development metrics.
 	/// </summary>
-	[CreateAssetMenu(fileName = "DevMetricData", menuName = "DevMetric/Data Asset", order = 0)]
+	[CreateAssetMenu(fileName = "DevMetricData", menuName = "BlueCheese/Dev Metric Data", order = 0)]
 	public class DevMetricDataAsset : ScriptableObject
 	{
 		[Header("Project / User metadata")]

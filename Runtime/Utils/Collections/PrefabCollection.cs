@@ -6,6 +6,6 @@ using UnityEngine;
 
 namespace BlueCheese.Core.Utils
 {
-	[CreateAssetMenu(menuName = "Collection/Prefab Collection", fileName = "PrefabCollection")]
+	[CreateAssetMenu(menuName = "BlueCheese/Collections/Prefab Collection", fileName = "PrefabCollection")]
 	public class PrefabCollection : Collection<UnityEngine.GameObject> { }
 }
