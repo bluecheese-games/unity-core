@@ -5,8 +5,6 @@
 using BlueCheese.Core.DI;
 using NUnit.Framework;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace BlueCheese.Tests.DI
 {
@@ -30,12 +28,6 @@ namespace BlueCheese.Tests.DI
 		public MissingDepService(IDisposable nonExistent) { }
 	}
 
-	public class DisposableTracker : IDisposable
-	{
-		public bool IsDisposed { get; private set; }
-		public void Dispose() => IsDisposed = true;
-	}
-
 	[TestFixture]
 	public class AdvancedFeatureTests
 	{
@@ -46,83 +38,6 @@ namespace BlueCheese.Tests.DI
 		{
 			_globalContainer = new ServiceContainer();
 		}
-
-		#region Scoped Containers (Hierarchy)
-
-		[Test]
-		public void Scope_ChildCanResolveFromParent()
-		{
-			// Arrange
-			_globalContainer.Register<IGlobalService, GlobalService>().AsSingleton();
-			var sceneContainer = new ServiceContainer(_globalContainer);
-
-			// Act
-			var resolved = sceneContainer.Resolve<IGlobalService>();
-
-			// Assert
-			Assert.IsNotNull(resolved);
-			Assert.IsInstanceOf<GlobalService>(resolved);
-		}
-
-		[Test]
-		public void Scope_ChildOverridesParent()
-		{
-			// Arrange
-			_globalContainer.Register<IGlobalService, GlobalService>().AsSingleton();
-
-			var sceneContainer = new ServiceContainer(_globalContainer);
-			// Local override of the same interface
-			var localOverride = new GlobalService();
-			sceneContainer.Register<IGlobalService>(localOverride);
-
-			// Act
-			var globalRes = _globalContainer.Resolve<IGlobalService>();
-			var sceneRes = sceneContainer.Resolve<IGlobalService>();
-
-			// Assert
-			Assert.AreNotSame(globalRes, sceneRes, "Child should return its own registration.");
-			Assert.AreSame(localOverride, sceneRes);
-		}
-
-		[Test]
-		public void Scope_ResolveAll_CombinesParentAndChild()
-		{
-			// Arrange
-			_globalContainer.Register<IGlobalService, GlobalService>();
-			var sceneContainer = new ServiceContainer(_globalContainer);
-			sceneContainer.Register<IGlobalService, GlobalService>();
-
-			// Act
-			var all = sceneContainer.Resolve<IEnumerable<IGlobalService>>();
-
-			// Assert
-			Assert.AreEqual(2, all.Count(), "Should find one from parent and one from child.");
-		}
-
-		[Test]
-		public void Scope_DisposeChild_DoesNotDisposeParent()
-		{
-			// Arrange
-			var globalDisc = new DisposableTracker();
-			var sceneDisc = new DisposableTracker();
-
-			_globalContainer.Register<DisposableTracker>(globalDisc);
-			var sceneContainer = new ServiceContainer(_globalContainer);
-			sceneContainer.Register<DisposableTracker>(sceneDisc);
-
-			// Force instantiation
-			sceneContainer.Resolve<DisposableTracker>();
-			_globalContainer.Resolve<DisposableTracker>();
-
-			// Act
-			sceneContainer.Dispose();
-
-			// Assert
-			Assert.IsTrue(sceneDisc.IsDisposed, "Child service should be disposed.");
-			Assert.IsFalse(globalDisc.IsDisposed, "Parent service should remain active.");
-		}
-
-		#endregion
 
 		#region Validation
 

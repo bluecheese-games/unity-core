@@ -11,33 +11,23 @@ using System.Reflection;
 namespace BlueCheese.Core.DI
 {
 	/// <summary>
-	/// The core container responsible for managing service registrations, scopes, and resolution.
+	/// The core container responsible for managing service registrations and resolution.
 	/// </summary>
 	public class ServiceContainer : IDisposable
 	{
-		private readonly ServiceContainer _parent;
 		private readonly ConcurrentDictionary<Type, List<ServiceDescriptor>> _services = new();
 		private readonly ConcurrentDictionary<(Type, string), ServiceDescriptor> _keyedServices = new();
-		private readonly ConcurrentDictionary<Type, Action<object>> _optionsConfigurations = new();
+		private readonly ConcurrentDictionary<Type, Func<object>> _optionsFactories = new();
 		private readonly ConcurrentStack<IDisposable> _disposalStack = new();
 
 		private List<Type> _resolutionStack;
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="ServiceContainer"/> class.
+		/// Configures options for a specific type using a factory delegate.
 		/// </summary>
-		/// <param name="parent">An optional parent container for hierarchical resolution.</param>
-		public ServiceContainer(ServiceContainer parent = null)
+		public void Configure<TOptions>(Func<TOptions> configure) where TOptions : class, new()
 		{
-			_parent = parent;
-		}
-
-		/// <summary>
-		/// Configures options for a specific type using a delegate.
-		/// </summary>
-		public void Configure<TOptions>(Action<TOptions> configure) where TOptions : class, new()
-		{
-			_optionsConfigurations[typeof(TOptions)] = obj => configure((TOptions)obj);
+			_optionsFactories[typeof(TOptions)] = () => configure();
 		}
 
 		#region Registration
@@ -123,11 +113,10 @@ namespace BlueCheese.Core.DI
 			if (!string.IsNullOrEmpty(key))
 			{
 				if (_keyedServices.TryGetValue((serviceType, key), out var keyed)) return keyed.GetInstance<object>();
-				if (_parent != null) return _parent.Resolve(serviceType, key);
 				throw new InvalidOperationException($"No service registered with key '{key}' for {serviceType}");
 			}
 
-			// 2. Direct Local Resolution
+			// 2. Direct Resolution
 			if (_services.TryGetValue(serviceType, out var list))
 			{
 				_resolutionStack ??= new List<Type>();
@@ -139,7 +128,7 @@ namespace BlueCheese.Core.DI
 				finally { _resolutionStack.RemoveAt(_resolutionStack.Count - 1); }
 			}
 
-			// 3. Collection Resolution (Aggregates Parent + Local)
+			// 3. Collection Resolution
 			if (serviceType.IsGenericType && serviceType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
 			{
 				return ResolveAll(serviceType.GetGenericArguments()[0]);
@@ -169,33 +158,21 @@ namespace BlueCheese.Core.DI
 				}
 			}
 
-			// 6. Parent Scope Delegation
-			if (_parent != null) return _parent.Resolve(serviceType);
-
 			throw new InvalidOperationException($"Service of type {serviceType} is not registered.");
 		}
 
 		private object ResolveOptions(Type optionsType)
 		{
-			object instance = Activator.CreateInstance(optionsType);
-			ApplyOptionsConfiguration(optionsType, instance);
+			object instance = _optionsFactories.TryGetValue(optionsType, out var factory) ? factory() : Activator.CreateInstance(optionsType);
 			Type wrapperType = typeof(OptionsWrapper<>).MakeGenericType(optionsType);
 			return Activator.CreateInstance(wrapperType, instance);
 		}
 
-		// Walks the container hierarchy root-first, applying each level's configuration delegate to the same instance.
-		internal void ApplyOptionsConfiguration(Type optionsType, object instance)
-		{
-			_parent?.ApplyOptionsConfiguration(optionsType, instance);
-			if (_optionsConfigurations.TryGetValue(optionsType, out var config)) config(instance);
-		}
-
 		internal object ResolveAll(Type itemType)
 		{
-			var parentInstances = _parent != null ? ((IEnumerable<object>)_parent.ResolveAll(itemType)) : Enumerable.Empty<object>();
-			var localInstances = _services.TryGetValue(itemType, out var list) ? list.Select(d => d.GetInstance<object>()) : Enumerable.Empty<object>();
+			var instances = _services.TryGetValue(itemType, out var list) ? list.Select(d => d.GetInstance<object>()) : Enumerable.Empty<object>();
 
-			var combined = parentInstances.Concat(localInstances).ToArray();
+			var combined = instances.ToArray();
 			var array = Array.CreateInstance(itemType, combined.Length);
 			for (int i = 0; i < combined.Length; i++) array.SetValue(combined[i], i);
 			return array;
