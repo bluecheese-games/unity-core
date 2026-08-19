@@ -67,6 +67,10 @@ namespace BlueCheese.Core.Editor
 			var sw = System.Diagnostics.Stopwatch.StartNew();
 			var assets = FindAssets().ToList();
 			bank.Feed(assets);
+			// Feed() only marks the bank dirty (EditorUtility.SetDirty); without an explicit save the
+			// regenerated data stays in memory and the .asset file on disk never reflects it (e.g. a
+			// stale TypeName after a rename, or a deleted asset still listed).
+			AssetDatabase.SaveAssets();
 			ConfigureAddressables(assets);
 			Debug.Log($"Regenerated AssetBank in {sw.ElapsedMilliseconds}ms");
 

@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace BlueCheese.Core.FSM.Graph
 {
-    [CreateAssetMenu(fileName = "FSMGraph", menuName = "FSM/Graph")]
+    [CreateAssetMenu(fileName = "FSMGraph", menuName = "BlueCheese/FSM Graph")]
     public class FSMGraphAsset : ScriptableObject
     {
         public List<GraphState> States = new();

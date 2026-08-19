@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace BlueCheese.Core.Config
 {
-	[CreateAssetMenu(fileName = "Config_New", menuName = "Config/Asset")]
+	[CreateAssetMenu(fileName = "Config_New", menuName = "BlueCheese/Config Asset")]
 	public class ConfigAsset : AssetBase
 	{
 		public ConfigItem[] Items;

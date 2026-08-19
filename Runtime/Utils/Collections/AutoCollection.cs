@@ -13,6 +13,9 @@ namespace BlueCheese.Core.Utils
 	public abstract class AutoCollection<T> : Collection<T> where T : UnityEngine.Object
 	{
 #if UNITY_EDITOR
+		// Content is rebuilt from the AssetDatabase on OnRegister, so manual edits would just be overwritten.
+		public override bool IsEditable => false;
+
 		public override void OnRegister()
 		{
 			base.OnRegister();
@@ -49,13 +52,13 @@ namespace BlueCheese.Core.Utils
 			.Select(UnityEditor.AssetDatabase.GUIDToAssetPath)
 			.Select(UnityEditor.AssetDatabase.LoadAssetAtPath<T>)
 			.Where(asset => asset != null)
-			.Where(Filter)
+			.Where(CollectFilter)
 			.OrderBy(asset => asset.name);
 
 		/// <summary>
 		/// Filters assets to be included in the collection.
 		/// </summary>
-		protected virtual bool Filter(T asset) => true;
+		protected virtual bool CollectFilter(T asset) => true;
 #endif
 
 	}

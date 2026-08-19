@@ -6,6 +6,6 @@ using UnityEngine;
 
 namespace BlueCheese.Core.Utils
 {
-	[CreateAssetMenu(menuName = "Collection/Bool Collection", fileName = "BoolCollection")]
+	[CreateAssetMenu(menuName = "BlueCheese/Collections/Bool Collection", fileName = "BoolCollection")]
 	public class BoolCollection : Collection<bool> { }
 }
