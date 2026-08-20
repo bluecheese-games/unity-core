@@ -82,7 +82,24 @@ namespace BlueCheese.Core.Editor
 				.Select(AssetDatabase.GUIDToAssetPath)
 				.Select(AssetDatabase.LoadAssetAtPath<AssetBase>)
 				.Where(asset => asset != null && asset.RegisterInAssetBank)
+				.Select(EnsureNamePopulated)
 				.OrderBy(asset => asset.Name);
+
+		// [CreateAssetMenu] never calls OnValidate() on the freshly created instance (that only happens on
+		// deserialization from disk or an Editor-driven property edit), yet creating the .asset file
+		// immediately triggers AssetBankAssetPostprocessor -> Regenerate() -> FindAssets() synchronously, in
+		// the same import. Without this fallback, a brand new asset's Name (normally defaulted by
+		// AssetBase.OnValidate) would still be empty at the exact moment it's snapshotted into the bank,
+		// leaving it stuck with a blank Name until something else happens to trigger OnValidate later.
+		private static AssetBase EnsureNamePopulated(AssetBase asset)
+		{
+			if (string.IsNullOrEmpty(asset.Name))
+			{
+				asset.Name = asset.name;
+				EditorUtility.SetDirty(asset);
+			}
+			return asset;
+		}
 
 		// Ensures every Addressables asset is registered in the Addressables system with its GUID as address.
 		// No-op when the UNITY_ADDRESSABLES symbol is not defined.

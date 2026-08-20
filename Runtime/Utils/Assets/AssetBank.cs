@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using UnityEngine;
 
 [assembly: InternalsVisibleTo("BlueCheese.Core.Tests")]
+[assembly: InternalsVisibleTo("BlueCheese.App.Tests")]
 
 namespace BlueCheese.Core.Utils
 {
@@ -332,6 +333,17 @@ namespace BlueCheese.Core.Utils
 			_assets = assets.Select(AssetBaseRef.FromAsset).ToList();
 			foreach (var asset in assets)
 				asset.OnRegister();
+
+			// Feed() used to only update the serialized _assets list, leaving the runtime lookup
+			// dictionaries (_assetsByName/_assetsByGuid/_assetsByTags/_assetsByType) stale until the next
+			// full Initialize() -- which, once the static Instance is cached for the session, only happens
+			// on a domain reload. That meant a freshly created/changed asset was invisible to
+			// GetAssetOfType/GetAssetByName/etc. for anyone already holding a reference to the cached
+			// singleton (e.g. AssetBankGenerator re-feeding the very instance AssetBank.Instance already
+			// resolved to) until the next script recompile. Rebuilding here keeps this instance's lookups
+			// always in sync with what was just fed; harmless even if `this` isn't the cached Instance.
+			RebuildIndex();
+
 			UnityEditor.EditorUtility.SetDirty(this);
 		}
 
