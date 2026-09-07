@@ -1,8 +1,4 @@
-//
-// Copyright (c) 2026 BlueCheese Games All rights reserved
-//
-
-using BlueCheese.Core.FSM.Graph;
+﻿using BlueCheese.Core.FSM.Graph;
 using UnityEditor;
 using UnityEditor.Callbacks;
 using UnityEngine;

@@ -1,8 +1,4 @@
-//
-// Copyright (c) 2026 BlueCheese Games All rights reserved
-//
-
-namespace BlueCheese.Core.FSM
+﻿namespace BlueCheese.Core.FSM
 {
     /// <summary>
     /// Context passed to state handlers when the state machine starts.

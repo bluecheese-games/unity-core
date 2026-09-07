@@ -1,8 +1,4 @@
-//
-// Copyright (c) 2026 BlueCheese Games All rights reserved
-//
-
-using BlueCheese.Core.Utils;
+﻿using BlueCheese.Core.Utils;
 using System;
 using System.Text;
 using UnityEditor;

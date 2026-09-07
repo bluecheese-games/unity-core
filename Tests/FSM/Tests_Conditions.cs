@@ -1,8 +1,4 @@
-//
-// Copyright (c) 2026 BlueCheese Games All rights reserved
-//
-
-using BlueCheese.Core.FSM;
+﻿using BlueCheese.Core.FSM;
 using NUnit.Framework;
 
 namespace BlueCheese.Tests.FSM

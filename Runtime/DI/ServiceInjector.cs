@@ -1,8 +1,4 @@
-//
-// Copyright (c) 2026 BlueCheese Games All rights reserved
-//
-
-using System.Linq;
+﻿using System.Linq;
 using System.Reflection;
 
 namespace BlueCheese.Core.DI
