@@ -26,6 +26,38 @@ namespace BlueCheese.Core.Utils
 			? UniTask.FromResult<T>(null)
 			: AssetBank.GetAssetByGuidAsync<T>(Guid);
 
+		/// <summary>
+		/// Loads the referenced asset and adds one reference to it -- the reference-counted
+		/// alternative to <see cref="Asset"/>. Call <see cref="Release"/> exactly once per successful
+		/// call (typically from OnDisable/OnDestroy) to let it be unloaded once nothing else
+		/// references it. Do not mix with <see cref="Asset"/>/<see cref="AssetAsync"/> on the same
+		/// field -- see <see cref="AssetBaseRef.Load{T}"/> for why. Typical usage:
+		/// <code>
+		/// [SerializeField] private AssetRef&lt;MyAsset&gt; _assetRef;
+		/// private MyAsset _asset;
+		///
+		/// private void OnEnable() => _assetRef.Load(out _asset);
+		/// private void OnDestroy() => _assetRef.Release();
+		/// </code>
+		/// </summary>
+		public readonly bool Load(out T asset)
+		{
+			asset = null;
+			return !string.IsNullOrEmpty(Guid) && AssetBank.LoadAssetByGuid(Guid, out asset);
+		}
+
+		/// <summary> Async counterpart of <see cref="Load"/>. </summary>
+		public readonly UniTask<T> LoadAsync() => string.IsNullOrEmpty(Guid)
+			? UniTask.FromResult<T>(null)
+			: AssetBank.LoadAssetByGuidAsync<T>(Guid);
+
+		/// <summary> Releases one reference acquired via <see cref="Load"/>/<see cref="LoadAsync"/>. </summary>
+		public readonly void Release()
+		{
+			if (!string.IsNullOrEmpty(Guid))
+				AssetBank.ReleaseAsset(Guid);
+		}
+
 		public static implicit operator T(AssetRef<T> assetRef) => assetRef.Asset;
 	}
 }

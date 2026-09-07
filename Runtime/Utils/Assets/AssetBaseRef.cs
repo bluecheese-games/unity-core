@@ -25,12 +25,23 @@ namespace BlueCheese.Core.Utils
 
 		public bool IsValid => !string.IsNullOrWhiteSpace(Guid) && !string.IsNullOrWhiteSpace(TypeName);
 
+		/// <summary> Whether the referenced asset is currently loaded and cached in memory. </summary>
+		public bool IsLoaded => _loadedAsset != null;
+
+		/// <summary>
+		/// Number of outstanding references acquired via <see cref="Load{T}"/>/<see cref="LoadAsync{T}"/>
+		/// and not yet released via <see cref="Release"/>. Always 0 for assets only ever accessed
+		/// through <see cref="TryLoad{T}"/>/<see cref="TryLoadAsync{T}"/> (the uncounted convenience API).
+		/// </summary>
+		public int RefCount => _refCount;
+
 		private Type _type;
 		private AssetBase _loadedAsset;
+		private int _refCount;
 
 #if UNITY_ADDRESSABLES
 		// Keeps the Addressables handle alive so the asset is not evicted from memory.
-		// Released in Unload().
+		// Released in UnloadPhysical().
 		private AsyncOperationHandle _addressablesHandle;
 #endif
 
@@ -59,6 +70,15 @@ namespace BlueCheese.Core.Utils
 		}
 #endif
 
+		#region Uncounted API (TryLoad) -- convenience getters, never unloaded automatically
+
+		/// <summary>
+		/// Resolves the asset, loading it if necessary. Not reference-counted: the asset stays cached
+		/// forever once loaded (nothing here ever unloads it). This backs <see cref="AssetBank"/>'s
+		/// Get* convenience methods. Do not mix with <see cref="Load{T}"/>/<see cref="Release"/> on the
+		/// same asset -- both share the same underlying cached instance, so releasing the last counted
+		/// reference can unload an asset a TryLoad caller still expects to be resident.
+		/// </summary>
 		public bool TryLoad<T>(out T asset) where T : AssetBase
 		{
 			// Return cached asset if already loaded
@@ -75,6 +95,104 @@ namespace BlueCheese.Core.Utils
 				return true;
 			}
 
+			return LoadFromConfiguredSource(out asset);
+		}
+
+		/// <summary> Async counterpart of <see cref="TryLoad{T}"/>. See its remarks for caveats. </summary>
+		public async UniTask<T> TryLoadAsync<T>() where T : AssetBase
+		{
+			// Return cached asset if already loaded
+			if (_loadedAsset is T cachedAsset) return cachedAsset;
+
+			// Editor shortcut: load directly from AssetDatabase
+			if (TryGetEditorAsset(out T editorAsset))
+			{
+				_loadedAsset = editorAsset;
+				return editorAsset;
+			}
+
+			return await LoadFromConfiguredSourceAsync<T>();
+		}
+
+		#endregion
+
+		#region Counted API (Load/Release) -- unloaded once every reference has been released
+
+		/// <summary>
+		/// Loads the asset and adds one reference. Call <see cref="Release"/> exactly once per
+		/// successful <see cref="Load{T}"/>/<see cref="LoadAsync{T}"/> call to let it be unloaded once
+		/// nothing else references it. Unlike <see cref="TryLoad{T}"/>, this always goes through the
+		/// asset's configured Resources/Addressables path -- even in the Editor -- so it also exercises
+		/// (and can be used to verify) the real runtime loading behavior while testing in Play Mode.
+		/// Do not mix with <see cref="TryLoad{T}"/> on the same asset -- see its remarks.
+		/// </summary>
+		public bool Load<T>(out T asset) where T : AssetBase
+		{
+			if (_loadedAsset is T cachedAsset)
+			{
+				_refCount++;
+				asset = cachedAsset;
+				return true;
+			}
+
+			// Only count the reference once loading actually succeeds -- otherwise a failed Load would
+			// leak a phantom reference that nothing will ever Release (nothing was returned to the
+			// caller, so they have nothing to call Release on).
+			if (LoadFromConfiguredSource(out asset))
+			{
+				_refCount++;
+				return true;
+			}
+
+			return false;
+		}
+
+		/// <summary> Async counterpart of <see cref="Load{T}"/>. See its remarks for caveats. </summary>
+		public async UniTask<T> LoadAsync<T>() where T : AssetBase
+		{
+			if (_loadedAsset is T cachedAsset)
+			{
+				_refCount++;
+				return cachedAsset;
+			}
+
+			T asset = await LoadFromConfiguredSourceAsync<T>();
+			if (asset != null)
+			{
+				_refCount++;
+			}
+			return asset;
+		}
+
+		/// <summary>
+		/// Releases one reference acquired via <see cref="Load{T}"/>/<see cref="LoadAsync{T}"/>. Once
+		/// the reference count reaches 0 the asset is unloaded (see <see cref="TryLoad{T}"/>'s remarks
+		/// for why this is unsafe to call for references that were only ever obtained via TryLoad).
+		/// Calling this more times than Load/LoadAsync succeeded logs a warning and is otherwise a no-op.
+		/// </summary>
+		public void Release()
+		{
+			if (_refCount <= 0)
+			{
+				Debug.LogWarning($"[AssetBank] Release() called on '{Name}' (GUID: {Guid}) with no active reference. Ignoring.");
+				return;
+			}
+
+			_refCount--;
+			if (_refCount == 0)
+			{
+				UnloadPhysical();
+			}
+		}
+
+		#endregion
+
+		#region Loading / unloading internals
+
+		// Resources/Addressables loading shared by the uncounted and counted APIs (after the Editor
+		// shortcut has already been tried/skipped by the caller).
+		private bool LoadFromConfiguredSource<T>(out T asset) where T : AssetBase
+		{
 			switch (LoadMode)
 			{
 				case AssetLoadMode.Resources:
@@ -84,7 +202,7 @@ namespace BlueCheese.Core.Utils
 #if UNITY_ADDRESSABLES
 				case AssetLoadMode.Addressables:
 					// WaitForCompletion blocks the main thread; acceptable for the synchronous API.
-					// Prefer TryLoadAsync for runtime use to avoid frame hitches.
+					// Prefer the async variant for runtime use to avoid frame hitches.
 					var handle = Addressables.LoadAssetAsync<T>(Guid);
 					handle.WaitForCompletion();
 					asset = handle.Status == AsyncOperationStatus.Succeeded ? handle.Result : null;
@@ -108,18 +226,9 @@ namespace BlueCheese.Core.Utils
 			}
 		}
 
-		public async UniTask<T> TryLoadAsync<T>() where T : AssetBase
+		// Async counterpart of LoadFromConfiguredSource.
+		private async UniTask<T> LoadFromConfiguredSourceAsync<T>() where T : AssetBase
 		{
-			// Return cached asset if already loaded
-			if (_loadedAsset is T cachedAsset) return cachedAsset;
-
-			// Editor shortcut: load directly from AssetDatabase
-			if (TryGetEditorAsset(out T editorAsset))
-			{
-				_loadedAsset = editorAsset;
-				return editorAsset;
-			}
-
 			T asset = null;
 			switch (LoadMode)
 			{
@@ -152,13 +261,9 @@ namespace BlueCheese.Core.Utils
 			return asset;
 		}
 
-		/// <summary>
-		/// Releases the loaded asset from memory and clears the internal cache.
-		/// For Resources assets, calls <see cref="Resources.UnloadAsset"/>.
-		/// For Addressables assets, releases the operation handle.
-		/// Only call when no other system holds a reference to the asset.
-		/// </summary>
-		public void Unload()
+		// Physically unloads the cached asset and clears the internal cache.
+		// For Resources assets, calls Resources.UnloadAsset. For Addressables assets, releases the handle.
+		private void UnloadPhysical()
 		{
 			if (_loadedAsset == null) return;
 
@@ -200,5 +305,7 @@ namespace BlueCheese.Core.Utils
 			return false;
 #endif
 		}
+
+		#endregion
 	}
 }

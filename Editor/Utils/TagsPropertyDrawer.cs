@@ -301,7 +301,7 @@ namespace BlueCheese.Core.Editor
 			{
 				string tag    = tagsProperty.GetArrayElementAtIndex(i).stringValue;
 				float chipW   = Mathf.Max(_chipStyle.CalcSize(new GUIContent(tag)).x, MinChipWidth);
-				var chip      = new ChipInfo(tag, i, chipW, ChipColor(tag));
+				var chip      = new ChipInfo(tag, i, chipW, TagChipUtility.GetColor(tag));
 
 				if (currentRow.Count > 0 && rowUsed + chipW > contentWidth)
 				{
@@ -315,17 +315,6 @@ namespace BlueCheese.Core.Editor
 			}
 
 			return rows;
-		}
-
-		// ── Color ─────────────────────────────────────────────────────────────
-
-		// Deterministic pastel color derived from the tag's hash code.
-		// Does not modify Unity's global Random state.
-		private static Color ChipColor(string tag)
-		{
-			uint hash = (uint)tag.GetHashCode();
-			float h = (hash % 360u) / 360f;
-			return Color.HSVToRGB(h, 0.42f, 0.90f);
 		}
 
 		// ── Data ──────────────────────────────────────────────────────────────

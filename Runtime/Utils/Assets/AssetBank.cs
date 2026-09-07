@@ -191,33 +191,79 @@ namespace BlueCheese.Core.Utils
 			return Array.Empty<T>();
 		}
 
+		#endregion
+
+		#region Static API (Load/Release -- reference-counted)
+
 		/// <summary>
-		/// Unloads all cached assets from memory and clears their internal caches.
-		/// Only call when you are certain no other system holds references to these assets.
+		/// Loads the asset with the given GUID and adds one reference to it. Call
+		/// <see cref="ReleaseAsset"/> exactly once per successful Load/LoadAssetByGuidAsync call to
+		/// let it be unloaded once nothing else references it. See <see cref="AssetBaseRef.Load{T}"/>
+		/// for how this differs from (and why it must not be mixed with) <see cref="GetAssetByGuid{T}"/>.
 		/// </summary>
-		public static void UnloadAll()
+		public static bool LoadAssetByGuid<T>(string guid, out T asset) where T : AssetBase
 		{
-			if (_instance?._assets == null) return;
-			foreach (var assetRef in _instance._assets)
+			asset = null;
+			if (!string.IsNullOrEmpty(guid) && Instance._assetsByGuid.TryGetValue(guid, out var assetRef))
 			{
-				assetRef.Unload();
+				return assetRef.Load(out asset);
+			}
+			return false;
+		}
+
+		/// <summary> Async counterpart of <see cref="LoadAssetByGuid{T}"/>. </summary>
+		public static async UniTask<T> LoadAssetByGuidAsync<T>(string guid) where T : AssetBase
+		{
+			if (string.IsNullOrEmpty(guid)) return null;
+			if (Instance._assetsByGuid.TryGetValue(guid, out var assetRef))
+			{
+				return await assetRef.LoadAsync<T>();
+			}
+			return null;
+		}
+
+		/// <summary> Releases one reference acquired via <see cref="LoadAssetByGuid{T}"/>/<see cref="LoadAssetByGuidAsync{T}"/>. </summary>
+		public static void ReleaseAsset(string guid)
+		{
+			if (!string.IsNullOrEmpty(guid) && Instance._assetsByGuid.TryGetValue(guid, out var assetRef))
+			{
+				assetRef.Release();
 			}
 		}
 
 		/// <summary>
-		/// Unloads all cached assets carrying the given tag and clears their internal caches.
-		/// Symmetric with <see cref="GetAssetsByTag{T}"/>. Only call when no other system holds
-		/// references to these assets.
+		/// Loads the first asset registered with the given name and adds one reference to it. Call
+		/// <see cref="ReleaseAssetByName"/> exactly once per successful Load/LoadAssetByNameAsync call.
+		/// See <see cref="AssetBaseRef.Load{T}"/> for how this differs from (and why it must not be
+		/// mixed with) <see cref="GetAssetByName{T}"/>.
 		/// </summary>
-		public static void UnloadAssetsByTag(string tag)
+		public static bool LoadAssetByName<T>(string name, out T asset) where T : AssetBase
 		{
-			if (string.IsNullOrEmpty(tag)) return;
-			if (Instance._assetsByTags.TryGetValue(tag, out var assetRefs))
+			asset = null;
+			if (!string.IsNullOrEmpty(name) && Instance._assetsByName.TryGetValue(name, out var assetRef))
 			{
-				foreach (var assetRef in assetRefs)
-				{
-					assetRef.Unload();
-				}
+				return assetRef.Load(out asset);
+			}
+			return false;
+		}
+
+		/// <summary> Async counterpart of <see cref="LoadAssetByName{T}"/>. </summary>
+		public static async UniTask<T> LoadAssetByNameAsync<T>(string name) where T : AssetBase
+		{
+			if (string.IsNullOrEmpty(name)) return null;
+			if (Instance._assetsByName.TryGetValue(name, out var assetRef))
+			{
+				return await assetRef.LoadAsync<T>();
+			}
+			return null;
+		}
+
+		/// <summary> Releases one reference acquired via <see cref="LoadAssetByName{T}"/>/<see cref="LoadAssetByNameAsync{T}"/>. </summary>
+		public static void ReleaseAssetByName(string name)
+		{
+			if (!string.IsNullOrEmpty(name) && Instance._assetsByName.TryGetValue(name, out var assetRef))
+			{
+				assetRef.Release();
 			}
 		}
 
@@ -322,6 +368,13 @@ namespace BlueCheese.Core.Utils
 		UniTask<T[]> IAssetBank.GetAssetsOfTypeAsync<T>() => GetAssetsOfTypeAsync<T>();
 		IEnumerable<T> IAssetBank.GetAssetsByTag<T>(string tag) => GetAssetsByTag<T>(tag);
 		UniTask<T[]> IAssetBank.GetAssetsByTagAsync<T>(string tag) => GetAssetsByTagAsync<T>(tag);
+
+		bool IAssetBank.LoadAssetByGuid<T>(string guid, out T asset) => LoadAssetByGuid(guid, out asset);
+		UniTask<T> IAssetBank.LoadAssetByGuidAsync<T>(string guid) => LoadAssetByGuidAsync<T>(guid);
+		void IAssetBank.ReleaseAsset(string guid) => ReleaseAsset(guid);
+		bool IAssetBank.LoadAssetByName<T>(string name, out T asset) => LoadAssetByName(name, out asset);
+		UniTask<T> IAssetBank.LoadAssetByNameAsync<T>(string name) => LoadAssetByNameAsync<T>(name);
+		void IAssetBank.ReleaseAssetByName(string name) => ReleaseAssetByName(name);
 
 		#endregion
 
