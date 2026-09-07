@@ -1,8 +1,4 @@
-//
-// Copyright (c) 2026 BlueCheese Games All rights reserved
-//
-
-namespace BlueCheese.Core.Signals
+﻿namespace BlueCheese.Core.Signals
 {
     public class SignalContext
     {

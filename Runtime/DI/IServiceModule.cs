@@ -1,8 +1,4 @@
-//
-// Copyright (c) 2026 BlueCheese Games All rights reserved
-//
-
-namespace BlueCheese.Core.DI
+﻿namespace BlueCheese.Core.DI
 {
 	/// <summary>
 	/// Defines a module for grouping and discovering service registrations.

@@ -1,8 +1,4 @@
-//
-// Copyright (c) 2026 BlueCheese Games All rights reserved
-//
-
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace BlueCheese.Core.Signals
 {

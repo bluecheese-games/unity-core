@@ -1,8 +1,4 @@
-//
-// Copyright (c) 2026 BlueCheese Games All rights reserved
-//
-
-using System;
+﻿using System;
 using Cysharp.Threading.Tasks;
 
 namespace BlueCheese.Core.Signals
