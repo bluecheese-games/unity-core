@@ -3,9 +3,7 @@
 //
 
 using BlueCheese.Core.Utils;
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -14,10 +12,6 @@ namespace BlueCheese.Core.Editor
 	[CustomEditor(typeof(AssetBank))]
 	public class AssetBankEditor : UnityEditor.Editor
 	{
-		// First option is the "no filter" entry; the rest map to AssetLoadMode values.
-		private static readonly string[] _loadModeOptions =
-			new[] { "All" }.Concat(Enum.GetNames(typeof(AssetLoadMode))).ToArray();
-
 		private SerializedProperty _assetsProperty;
 
 		private string _searchText = string.Empty;
@@ -34,15 +28,25 @@ namespace BlueCheese.Core.Editor
 		{
 			serializedObject.Update();
 
-			if (GUILayout.Button("Regenerate"))
+			EditorGUILayout.BeginHorizontal();
+			bool regenerateClicked = GUILayout.Button("Regenerate");
+			bool browseClicked = GUILayout.Button("Browse Assets");
+			EditorGUILayout.EndHorizontal();
+
+			if (browseClicked)
+			{
+				AssetBankBrowserWindow.Open();
+			}
+
+			if (regenerateClicked)
 			{
 				AssetBankGenerator.Regenerate();
 				return;
 			}
 
 			var refs = CollectRefs();
-			string[] tagOptions = BuildTagOptions(refs);
-			string[] bundleOptions = BuildBundleOptions(refs);
+			string[] tagOptions = AssetBankFilterUtility.BuildTagOptions(refs);
+			string[] bundleOptions = AssetBankFilterUtility.BuildBundleOptions(refs);
 			_tagFilter = Mathf.Clamp(_tagFilter, 0, tagOptions.Length - 1);
 			_bundleFilter = Mathf.Clamp(_bundleFilter, 0, bundleOptions.Length - 1);
 
@@ -78,7 +82,7 @@ namespace BlueCheese.Core.Editor
 			}
 			EditorGUILayout.EndHorizontal();
 
-			_loadModeFilter = EditorGUILayout.Popup("Load Mode", _loadModeFilter, _loadModeOptions);
+			_loadModeFilter = EditorGUILayout.Popup("Load Mode", _loadModeFilter, AssetBankFilterUtility.LoadModeOptions);
 			_tagFilter = EditorGUILayout.Popup("Tag", _tagFilter, tagOptions);
 			_bundleFilter = EditorGUILayout.Popup("Bundle", _bundleFilter, bundleOptions);
 
@@ -89,7 +93,7 @@ namespace BlueCheese.Core.Editor
 		{
 			var matchingIndices = new List<int>();
 			for (int i = 0; i < refs.Count; i++)
-				if (Matches(refs[i], search, loadMode, tag, bundle))
+				if (AssetBankFilterUtility.Matches(refs[i], search, loadMode, tag, bundle))
 					matchingIndices.Add(i);
 
 			EditorGUILayout.BeginVertical("box");
@@ -142,51 +146,6 @@ namespace BlueCheese.Core.Editor
 			}
 			return refs;
 		}
-
-		private static string[] BuildTagOptions(List<AssetBaseRef> refs)
-		{
-			var tags = new SortedSet<string>(StringComparer.Ordinal);
-			foreach (var assetRef in refs)
-				foreach (string tag in (string[])assetRef.Tags)
-					if (!string.IsNullOrEmpty(tag)) tags.Add(tag);
-
-			return new[] { "All" }.Concat(tags).ToArray();
-		}
-
-		private static string[] BuildBundleOptions(List<AssetBaseRef> refs)
-		{
-			var bundles = new SortedSet<string>(StringComparer.Ordinal);
-			foreach (var assetRef in refs)
-				if (!string.IsNullOrEmpty(assetRef.BundleKey)) bundles.Add(assetRef.BundleKey);
-
-			return new[] { "All" }.Concat(bundles).ToArray();
-		}
-
-		private static bool Matches(AssetBaseRef assetRef, string search, AssetLoadMode? loadMode, string tag, string bundle)
-		{
-			if (loadMode.HasValue && assetRef.LoadMode != loadMode.Value)
-				return false;
-
-			if (!string.IsNullOrEmpty(tag) && !assetRef.Tags.Contains(tag))
-				return false;
-
-			if (!string.IsNullOrEmpty(bundle) && assetRef.BundleKey != bundle)
-				return false;
-
-			if (!string.IsNullOrEmpty(search))
-			{
-				bool hit =
-					ContainsIgnoreCase(assetRef.Name, search) ||
-					ContainsIgnoreCase(assetRef.Guid, search) ||
-					((string[])assetRef.Tags).Any(t => ContainsIgnoreCase(t, search));
-				if (!hit) return false;
-			}
-
-			return true;
-		}
-
-		private static bool ContainsIgnoreCase(string value, string search) =>
-			!string.IsNullOrEmpty(value) && value.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0;
 
 		#endregion
 	}

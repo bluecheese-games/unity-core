@@ -30,5 +30,19 @@ namespace BlueCheese.Core.Utils
 
 		IEnumerable<T> GetAssetsByTag<T>(string tag) where T : AssetBase;
 		UniTask<T[]> GetAssetsByTagAsync<T>(string tag) where T : AssetBase;
+
+		/// <summary>
+		/// Reference-counted alternative to <see cref="GetAssetByGuid{T}"/>/<see cref="GetAssetByName{T}"/>:
+		/// each successful Load must be matched by exactly one Release, which unloads the asset once
+		/// nothing else references it. Do not mix with the Get*/TryGet* methods on the same asset --
+		/// see <see cref="AssetBaseRef.Load{T}"/> for why.
+		/// </summary>
+		bool LoadAssetByGuid<T>(string guid, out T asset) where T : AssetBase;
+		UniTask<T> LoadAssetByGuidAsync<T>(string guid) where T : AssetBase;
+		void ReleaseAsset(string guid);
+
+		bool LoadAssetByName<T>(string name, out T asset) where T : AssetBase;
+		UniTask<T> LoadAssetByNameAsync<T>(string name) where T : AssetBase;
+		void ReleaseAssetByName(string name);
 	}
 }

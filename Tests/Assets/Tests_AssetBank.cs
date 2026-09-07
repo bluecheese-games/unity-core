@@ -290,45 +290,97 @@ public class Tests_AssetBank
 
 	#endregion
 
-	#region Unload by tag
+	#region Load / Release (reference-counted)
+
+	// Load/Release deliberately skip the Editor AssetDatabase shortcut that TryLoad uses (so it also
+	// exercises the real Resources/Addressables path, even in Play Mode in the Editor) -- so a
+	// successful Load in these EditMode tests would need the temp asset to actually sit under a
+	// Resources/_Assets/{guid} path, which these tests don't set up. What's covered here is the
+	// refcount bookkeeping itself: it must never go negative or "leak" a reference on a failed load.
 
 	[Test]
-	public void UnloadAssetsByTag_NullOrEmptyTag_DoesNotThrow()
+	public void Release_WithNoActiveReference_LogsWarningAndDoesNotThrow()
 	{
 		// Arrange
-		var a = CreateAsset<DummyAssetA>("Alpha", "shared");
-		AssetBank.InitializeForTests(new[] { RefOf(a) });
+		var a = CreateAsset<DummyAssetA>("Alpha");
+		var assetRef = RefOf(a);
+		AssetBank.InitializeForTests(new[] { assetRef });
+		LogAssert.Expect(LogType.Warning, new Regex("Release\\(\\) called on 'Alpha'"));
 
 		// Act & Assert
-		Assert.DoesNotThrow(() => AssetBank.UnloadAssetsByTag(null));
-		Assert.DoesNotThrow(() => AssetBank.UnloadAssetsByTag(string.Empty));
+		Assert.DoesNotThrow(() => AssetBank.ReleaseAsset(assetRef.Guid));
+		Assert.AreEqual(0, assetRef.RefCount);
 	}
 
 	[Test]
-	public void UnloadAssetsByTag_UnknownTag_DoesNotThrow()
+	public void ReleaseAsset_NullOrEmptyGuid_DoesNotThrow()
 	{
 		// Arrange
-		var a = CreateAsset<DummyAssetA>("Alpha", "shared");
+		var a = CreateAsset<DummyAssetA>("Alpha");
 		AssetBank.InitializeForTests(new[] { RefOf(a) });
 
 		// Act & Assert
-		Assert.DoesNotThrow(() => AssetBank.UnloadAssetsByTag("missing"));
+		Assert.DoesNotThrow(() => AssetBank.ReleaseAsset(null));
+		Assert.DoesNotThrow(() => AssetBank.ReleaseAsset(string.Empty));
 	}
 
 	[Test]
-	public void UnloadAssetsByTag_KnownTag_ThenReload_StillReturnsAsset()
+	public void ReleaseAssetByName_UnknownName_DoesNotThrow()
 	{
 		// Arrange
-		var a = CreateAsset<DummyAssetA>("Alpha", "shared");
+		var a = CreateAsset<DummyAssetA>("Alpha");
 		AssetBank.InitializeForTests(new[] { RefOf(a) });
-		_ = AssetBank.GetAssetByName<DummyAssetA>("Alpha"); // load into cache
+
+		// Act & Assert
+		Assert.DoesNotThrow(() => AssetBank.ReleaseAssetByName("Missing"));
+	}
+
+	[Test]
+	public void LoadAssetByGuid_UnresolvableGuid_ReturnsFalseAndDoesNotLeakRefCount()
+	{
+		// Arrange: a ghost ref is indexable but its GUID resolves to nothing, so the Resources load
+		// underneath Load() fails -- RefCount must stay at 0, or nothing would ever be able to Release it.
+		var ghost = GhostRef<DummyAssetA>("Ghost");
+		AssetBank.InitializeForTests(new[] { ghost });
+		LogAssert.Expect(LogType.Error, new Regex("Failed to load asset"));
 
 		// Act
-		AssetBank.UnloadAssetsByTag("shared");
-		var reloaded = AssetBank.GetAssetByName<DummyAssetA>("Alpha");
+		var loaded = AssetBank.LoadAssetByGuid<DummyAssetA>(ghost.Guid, out var asset);
 
 		// Assert
-		Assert.IsNotNull(reloaded);
+		Assert.IsFalse(loaded);
+		Assert.IsNull(asset);
+		Assert.AreEqual(0, ghost.RefCount);
+	}
+
+	[Test]
+	public void LoadAssetByGuid_UnknownGuid_ReturnsFalse()
+	{
+		// Arrange
+		var a = CreateAsset<DummyAssetA>("Alpha");
+		AssetBank.InitializeForTests(new[] { RefOf(a) });
+
+		// Act
+		var loaded = AssetBank.LoadAssetByGuid<DummyAssetA>("00000000000000000000000000000000", out var asset);
+
+		// Assert
+		Assert.IsFalse(loaded);
+		Assert.IsNull(asset);
+	}
+
+	[Test]
+	public void LoadAssetByName_UnknownName_ReturnsFalse()
+	{
+		// Arrange
+		var a = CreateAsset<DummyAssetA>("Alpha");
+		AssetBank.InitializeForTests(new[] { RefOf(a) });
+
+		// Act
+		var loaded = AssetBank.LoadAssetByName<DummyAssetA>("Missing", out var asset);
+
+		// Assert
+		Assert.IsFalse(loaded);
+		Assert.IsNull(asset);
 	}
 
 	#endregion
