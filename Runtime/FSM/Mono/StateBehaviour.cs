@@ -1,4 +1,4 @@
-﻿using NaughtyAttributes;
+﻿using BlueCheese.Core.Attributes;
 using System;
 using System.Linq;
 using UnityEngine;
