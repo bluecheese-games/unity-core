@@ -19,6 +19,14 @@ namespace BlueCheese.Core.Editor
 		private static float _lastGenTime = 0;
 		private static bool _regenPending = false;
 
+		// Paths written to disk by the most recent Regenerate() pass (e.g. an AutoCollection whose
+		// OnRegister() found new content, or the bank itself). AssetDatabase.SaveAssets() reimports
+		// whatever it just wrote, which would otherwise make AssetBankAssetPostprocessor see those
+		// paths as "changed" and call Regenerate() a second, redundant time for our own write.
+		private static readonly HashSet<string> _selfSavedPaths = new();
+
+		internal static bool WasSelfSaved(string assetPath) => _selfSavedPaths.Contains(assetPath);
+
 		static AssetBankGenerator()
 		{
 			EditorApplication.delayCall += () =>
@@ -63,6 +71,19 @@ namespace BlueCheese.Core.Editor
 			var sw = System.Diagnostics.Stopwatch.StartNew();
 			var assets = FindAssets().ToList();
 			bank.Feed(assets);
+
+			// Snapshot which assets Feed() actually left dirty (the bank itself, and any AutoCollection
+			// whose content changed) before saving, so the postprocessor can recognize the resulting
+			// reimport as self-inflicted instead of chaining into another Regenerate() call.
+			_selfSavedPaths.Clear();
+			foreach (var asset in assets.Cast<UnityEngine.Object>().Append(bank))
+			{
+				if (!EditorUtility.IsDirty(asset)) continue;
+				string path = AssetDatabase.GetAssetPath(asset);
+				if (!string.IsNullOrEmpty(path))
+					_selfSavedPaths.Add(path);
+			}
+
 			// Feed() only marks the bank dirty (EditorUtility.SetDirty); without an explicit save the
 			// regenerated data stays in memory and the .asset file on disk never reflects it (e.g. a
 			// stale TypeName after a rename, or a deleted asset still listed).

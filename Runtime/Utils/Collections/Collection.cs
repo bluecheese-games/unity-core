@@ -1,26 +1,50 @@
-﻿using System.Collections.Generic;
+using System.Collections;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using UnityEngine;
 
 namespace BlueCheese.Core.Utils
 {
-	public class Collection<T> : AssetBase
+	public class Collection<T> : AssetBase, IEnumerable<T>
 	{
 		[SerializeField, HideInInspector] protected List<T> _items;
 
-		public ReadOnlyCollection<T> Items => _items.AsReadOnly();
+		// Lazily initialized: assets created via [CreateAssetMenu] may never have had _items
+		// serialized before the first access (e.g. Items on a freshly created, empty asset).
+		private List<T> ItemsList => _items ??= new List<T>();
 
-		public int Size => _items != null ? _items.Count : 0;
+		public ReadOnlyCollection<T> Items => ItemsList.AsReadOnly();
 
-		public T this[int index] => _items != null ? _items[index] : default;
+		public int Size => ItemsList.Count;
 
+		public T this[int index] => ItemsList[index];
+
+		/// <summary>
+		/// Returns a random item from the collection, or default if empty.
+		/// </summary>
 		public T GetRandom()
 		{
-			if (_items == null || _items.Count == 0)
+			if (ItemsList.Count == 0)
 				return default;
 
-			return _items[UnityEngine.Random.Range(0, _items.Count)];
+			return ItemsList[UnityEngine.Random.Range(0, ItemsList.Count)];
 		}
+
+		/// <summary>
+		/// Returns a random item from the collection using the given <see cref="System.Random"/>
+		/// instead of <see cref="UnityEngine.Random"/>. Useful for deterministic/testable selection.
+		/// </summary>
+		public T GetRandom(System.Random random)
+		{
+			if (ItemsList.Count == 0)
+				return default;
+
+			return ItemsList[random.Next(ItemsList.Count)];
+		}
+
+		public IEnumerator<T> GetEnumerator() => ItemsList.GetEnumerator();
+
+		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
 #if UNITY_EDITOR
 		/// <summary>

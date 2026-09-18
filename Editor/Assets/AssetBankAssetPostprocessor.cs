@@ -15,8 +15,12 @@ namespace BlueCheese.Core.Editor
 			// Only regenerate when an .asset file is affected.
 			// Checking the extension avoids scanning the entire project on every texture, audio, or script import.
 			// Deleted assets can no longer be loaded, so the extension check is the best available heuristic.
+			// Paths Regenerate() itself just wrote (the bank, or an AutoCollection whose content changed)
+			// are excluded: AssetDatabase.SaveAssets() reimports them, which would otherwise chain into
+			// another Regenerate() pass for a change we already accounted for.
 			bool affectsAssetBank =
 				importedAssets.Concat(deletedAssets).Concat(movedAssets)
+					.Where(p => !AssetBankGenerator.WasSelfSaved(p))
 					.Any(p => p.EndsWith(".asset", System.StringComparison.OrdinalIgnoreCase)
 						   && IsOrCouldBeAssetBase(p));
 
