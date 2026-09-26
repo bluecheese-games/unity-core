@@ -14,11 +14,11 @@ namespace BlueCheese.Core.Utils
 	public class AssetBank : ScriptableObject, IAssetBank
 	{
 		public const string AssetBankResourcePath = "AssetBank";
-		public const string AssetsResourcePath = "_Assets";
 
 		private static AssetBank _instance;
 
 		[SerializeField] private List<AssetBaseRef> _assets;
+		[SerializeField] private bool _debugLogging = true;
 
 		private readonly Dictionary<string, AssetBaseRef> _assetsByName = new();
 		private readonly Dictionary<string, AssetBaseRef> _assetsByGuid = new();
@@ -399,6 +399,9 @@ namespace BlueCheese.Core.Utils
 		public static void SelectInProject() => UnityEditor.Selection.activeObject = Instance;
 
 		public static string GetPath() => UnityEditor.AssetDatabase.GetAssetPath(Instance);
+
+		/// <summary> Whether AssetBankGenerator.Regenerate() logs a summary message after each pass. </summary>
+		public bool DebugLogging => _debugLogging;
 
 		// Test seam: replaces the singleton with an in-memory bank built from the given refs,
 		// bypassing Resources so the lookup logic can be exercised in isolation.

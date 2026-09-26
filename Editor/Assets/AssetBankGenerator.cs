@@ -69,14 +69,17 @@ namespace BlueCheese.Core.Editor
 
 			// Regenerate the assets in the bank
 			var sw = System.Diagnostics.Stopwatch.StartNew();
-			var assets = FindAssets().ToList();
+			var allAssetBaseAssets = FindAllAssetBaseAssets().ToList();
+			var assets = FilterAndOrderForBank(allAssetBaseAssets).ToList();
 			bank.Feed(assets);
 
-			// Snapshot which assets Feed() actually left dirty (the bank itself, and any AutoCollection
-			// whose content changed) before saving, so the postprocessor can recognize the resulting
-			// reimport as self-inflicted instead of chaining into another Regenerate() call.
+			// Snapshot every dirty AssetBase asset in the project -- not just the ones currently
+			// eligible for the bank (`assets`). An asset whose LoadMode was just changed to None in
+			// this same edit is dirty too and gets swept up by the unconditional SaveAssets() below
+			// even though it's excluded from `assets`; missing it here would make the postprocessor
+			// see that save as an external change and chain into a second, redundant Regenerate() pass.
 			_selfSavedPaths.Clear();
-			foreach (var asset in assets.Cast<UnityEngine.Object>().Append(bank))
+			foreach (var asset in allAssetBaseAssets.Cast<UnityEngine.Object>().Append(bank))
 			{
 				if (!EditorUtility.IsDirty(asset)) continue;
 				string path = AssetDatabase.GetAssetPath(asset);
@@ -89,16 +92,31 @@ namespace BlueCheese.Core.Editor
 			// stale TypeName after a rename, or a deleted asset still listed).
 			AssetDatabase.SaveAssets();
 			ConfigureAddressables(assets);
-			Debug.Log($"Regenerated AssetBank in {sw.ElapsedMilliseconds}ms");
+			if (bank.DebugLogging)
+				Debug.Log($"Regenerated AssetBank in {sw.ElapsedMilliseconds}ms");
 
 			DevMetricRecorder.Record("AssetBank Regen", sw.Elapsed.TotalSeconds);
 		}
 
 		public static IEnumerable<AssetBase> FindAssets() =>
-			AssetDatabase.FindAssets($"t:{nameof(AssetBase)}")
+			FilterAndOrderForBank(FindAllAssetBaseAssets());
+
+		// Every AssetBase-derived asset in the project, regardless of LoadMode. Used both by
+		// FindAssets() (further filtered below) and by Regenerate()'s dirty-asset snapshot, which
+		// needs the unfiltered set -- see the comment where it's used.
+		//
+		// Scoped to "Assets" only: an unscoped search also matches every installed package (Packages/,
+		// including immutable Library/PackageCache git packages), so a module's own Sample content (e.g.
+		// unity-app's demo UIViewDef/FX/UISettings assets) would silently end up merged into the
+		// consuming project's own bank instead of staying an example.
+		private static IEnumerable<AssetBase> FindAllAssetBaseAssets() =>
+			AssetDatabase.FindAssets($"t:{nameof(AssetBase)}", new[] { "Assets" })
 				.Select(AssetDatabase.GUIDToAssetPath)
 				.Select(AssetDatabase.LoadAssetAtPath<AssetBase>)
-				.Where(asset => asset != null && asset.RegisterInAssetBank)
+				.Where(asset => asset != null);
+
+		private static IEnumerable<AssetBase> FilterAndOrderForBank(IEnumerable<AssetBase> assets) =>
+			assets.Where(asset => asset.LoadMode != AssetLoadMode.None)
 				.Select(EnsureNamePopulated)
 				.OrderBy(asset => asset.Name);
 
@@ -129,7 +147,7 @@ namespace BlueCheese.Core.Editor
 			bool changed = false;
 			foreach (var asset in assets)
 			{
-				if (asset.LoadMode != BlueCheese.Core.Utils.AssetLoadMode.Addressables) continue;
+				if (asset.LoadMode != BlueCheese.Core.Utils.AssetLoadMode.Remote) continue;
 
 				string guid = asset.Guid;
 

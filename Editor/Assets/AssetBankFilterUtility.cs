@@ -9,9 +9,17 @@ namespace BlueCheese.Core.Editor
 	// so the two stay behaviorally identical.
 	internal static class AssetBankFilterUtility
 	{
-		// First option is the "no filter" entry; the rest map to AssetLoadMode values.
+		// First option is the "no filter" entry; the rest map to AssetLoadMode values. None is
+		// excluded: a None-mode asset never makes it into the bank in the first place (see
+		// AssetBankGenerator.FindAssets), so filtering by it would only ever show zero results.
 		public static readonly string[] LoadModeOptions =
-			new[] { "All" }.Concat(Enum.GetNames(typeof(AssetLoadMode))).ToArray();
+			new[] { "All" }.Concat(Enum.GetNames(typeof(AssetLoadMode)).Where(name => name != nameof(AssetLoadMode.None))).ToArray();
+
+		// Parses a value from LoadModeOptions back into an AssetLoadMode (null for "All"/unknown).
+		// Looks the value up by name rather than by index, since LoadModeOptions may skip enum values
+		// (like None above) and can't be assumed to line up with the enum's underlying int values.
+		public static AssetLoadMode? ParseLoadModeOption(string option) =>
+			!string.IsNullOrEmpty(option) && Enum.TryParse<AssetLoadMode>(option, out var mode) ? mode : null;
 
 		public static string[] BuildTagOptions(IEnumerable<AssetBaseRef> refs)
 		{

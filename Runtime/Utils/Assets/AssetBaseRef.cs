@@ -16,8 +16,12 @@ namespace BlueCheese.Core.Utils
 		public string Guid;
 		public string TypeName;
 		public Tags Tags;
-		public AssetLoadMode LoadMode = AssetLoadMode.Resources;
+		public AssetLoadMode LoadMode = AssetLoadMode.Local;
 		public string BundleKey;
+
+		// Local mode only: direct reference to the asset, held by the AssetBank itself so Unity's
+		// normal build dependency resolution includes it -- no Resources/Addressables indirection.
+		public AssetBase DirectRef;
 
 		public bool IsValid => !string.IsNullOrWhiteSpace(Guid) && !string.IsNullOrWhiteSpace(TypeName);
 
@@ -62,6 +66,7 @@ namespace BlueCheese.Core.Utils
 				Tags      = asset.Tags,
 				LoadMode  = asset.LoadMode,
 				BundleKey = asset.BundleKey,
+				DirectRef = asset.LoadMode == AssetLoadMode.Local ? asset : null,
 			};
 		}
 #endif
@@ -118,7 +123,7 @@ namespace BlueCheese.Core.Utils
 		/// Loads the asset and adds one reference. Call <see cref="Release"/> exactly once per
 		/// successful <see cref="Load{T}"/>/<see cref="LoadAsync{T}"/> call to let it be unloaded once
 		/// nothing else references it. Unlike <see cref="TryLoad{T}"/>, this always goes through the
-		/// asset's configured Resources/Addressables path -- even in the Editor -- so it also exercises
+		/// asset's configured Local/Remote path -- even in the Editor -- so it also exercises
 		/// (and can be used to verify) the real runtime loading behavior while testing in Play Mode.
 		/// Do not mix with <see cref="TryLoad{T}"/> on the same asset -- see its remarks.
 		/// </summary>
@@ -185,18 +190,18 @@ namespace BlueCheese.Core.Utils
 
 		#region Loading / unloading internals
 
-		// Resources/Addressables loading shared by the uncounted and counted APIs (after the Editor
+		// Local/Remote loading shared by the uncounted and counted APIs (after the Editor
 		// shortcut has already been tried/skipped by the caller).
 		private bool LoadFromConfiguredSource<T>(out T asset) where T : AssetBase
 		{
 			switch (LoadMode)
 			{
-				case AssetLoadMode.Resources:
-					asset = Resources.Load<T>($"{AssetBank.AssetsResourcePath}/{Guid}");
+				case AssetLoadMode.Local:
+					asset = DirectRef as T;
 					return CacheAndValidate(asset);
 
 #if UNITY_ADDRESSABLES
-				case AssetLoadMode.Addressables:
+				case AssetLoadMode.Remote:
 					// WaitForCompletion blocks the main thread; acceptable for the synchronous API.
 					// Prefer the async variant for runtime use to avoid frame hitches.
 					var handle = Addressables.LoadAssetAsync<T>(Guid);
@@ -208,7 +213,7 @@ namespace BlueCheese.Core.Utils
 						Addressables.Release(handle);
 					return CacheAndValidate(asset);
 #else
-				case AssetLoadMode.Addressables:
+				case AssetLoadMode.Remote:
 					Debug.LogError(
 						"[AssetBank] Addressables is not enabled. " +
 						"Install com.unity.addressables and add UNITY_ADDRESSABLES to your Scripting Define Symbols.");
@@ -228,15 +233,13 @@ namespace BlueCheese.Core.Utils
 			T asset = null;
 			switch (LoadMode)
 			{
-				case AssetLoadMode.Resources:
-					var request = Resources.LoadAsync<T>($"{AssetBank.AssetsResourcePath}/{Guid}");
-					await request;
-					asset = request.asset as T;
+				case AssetLoadMode.Local:
+					asset = DirectRef as T;
 					CacheAndValidate(asset);
 					break;
 
 #if UNITY_ADDRESSABLES
-				case AssetLoadMode.Addressables:
+				case AssetLoadMode.Remote:
 					var handle = Addressables.LoadAssetAsync<T>(Guid);
 					asset = await handle.Task.AsUniTask();
 					if (handle.Status == AsyncOperationStatus.Succeeded)
@@ -246,7 +249,7 @@ namespace BlueCheese.Core.Utils
 					CacheAndValidate(asset);
 					break;
 #else
-				case AssetLoadMode.Addressables:
+				case AssetLoadMode.Remote:
 					Debug.LogError(
 						"[AssetBank] Addressables is not enabled. " +
 						"Install com.unity.addressables and add UNITY_ADDRESSABLES to your Scripting Define Symbols.");
@@ -257,20 +260,20 @@ namespace BlueCheese.Core.Utils
 			return asset;
 		}
 
-		// Physically unloads the cached asset and clears the internal cache.
-		// For Resources assets, calls Resources.UnloadAsset. For Addressables assets, releases the handle.
+		// Physically unloads the cached asset and clears the internal cache. For Remote (Addressables)
+		// assets, releases the handle. Local assets are a no-op: they're directly referenced by the
+		// AssetBank itself and stay resident for as long as the bank does, regardless of this ref's count.
 		private void UnloadPhysical()
 		{
 			if (_loadedAsset == null) return;
 
 			switch (LoadMode)
 			{
-				case AssetLoadMode.Resources:
-					Resources.UnloadAsset(_loadedAsset);
-					break;
+				case AssetLoadMode.Local:
+					return;
 
 #if UNITY_ADDRESSABLES
-				case AssetLoadMode.Addressables:
+				case AssetLoadMode.Remote:
 					if (_addressablesHandle.IsValid())
 						Addressables.Release(_addressablesHandle);
 					_addressablesHandle = default;

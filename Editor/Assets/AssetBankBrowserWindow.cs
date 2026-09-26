@@ -216,7 +216,7 @@ namespace BlueCheese.Core.Editor
 			_rowsContainer.Clear();
 			_loadedIndicators.Clear();
 
-			AssetLoadMode? loadMode = _loadModeDropdown.index <= 0 ? null : (AssetLoadMode)(_loadModeDropdown.index - 1);
+			AssetLoadMode? loadMode = AssetBankFilterUtility.ParseLoadModeOption(_loadModeDropdown.value);
 			string tag = _tagDropdown.index <= 0 ? null : _tagDropdown.value;
 			string bundle = _bundleDropdown.index <= 0 ? null : _bundleDropdown.value;
 			string search = _search?.Trim();

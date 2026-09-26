@@ -51,14 +51,15 @@ public class Tests_AssetBank
 
 	private static AssetBaseRef RefOf(AssetBase asset) => AssetBaseRef.FromAsset(asset);
 
-	// A ref pointing to a non-existent GUID: indexable but impossible to load.
+	// A ref with no DirectRef assigned: indexable but impossible to load (Local mode fails when
+	// DirectRef is unset, without needing a real Resources/Addressables lookup).
 	private static AssetBaseRef GhostRef<T>(string name, params string[] tags) where T : AssetBase => new()
 	{
 		Name = name,
 		Guid = "ffffffffffffffffffffffffffffffff",
 		TypeName = typeof(T).AssemblyQualifiedName,
 		Tags = tags,
-		LoadMode = AssetLoadMode.Resources,
+		LoadMode = AssetLoadMode.Local,
 	};
 
 	#endregion
@@ -289,10 +290,67 @@ public class Tests_AssetBank
 	#region Load / Release (reference-counted)
 
 	// Load/Release deliberately skip the Editor AssetDatabase shortcut that TryLoad uses (so it also
-	// exercises the real Resources/Addressables path, even in Play Mode in the Editor) -- so a
-	// successful Load in these EditMode tests would need the temp asset to actually sit under a
-	// Resources/_Assets/{guid} path, which these tests don't set up. What's covered here is the
-	// refcount bookkeeping itself: it must never go negative or "leak" a reference on a failed load.
+	// exercises the real Local/Remote path, even in Play Mode in the Editor). Local mode's "real path"
+	// is just its DirectRef, though, so CreateAsset's default LoadMode (Local) makes the success path
+	// testable here too -- unlike Remote (Addressables), which would need a real catalog to exercise.
+
+	[Test]
+	public void LoadAssetByGuid_LocalMode_ReturnsAssetAndIncrementsRefCount()
+	{
+		// Arrange
+		var a = CreateAsset<DummyAssetA>("Alpha"); // LoadMode defaults to Local -> DirectRef is set
+		var assetRef = RefOf(a);
+		AssetBank.InitializeForTests(new[] { assetRef });
+
+		// Act
+		var loaded = AssetBank.LoadAssetByGuid<DummyAssetA>(assetRef.Guid, out var asset);
+
+		// Assert
+		Assert.IsTrue(loaded);
+		Assert.AreEqual(a, asset);
+		Assert.AreEqual(1, assetRef.RefCount);
+	}
+
+	[Test]
+	public void LoadAssetByGuid_CalledTwice_IncrementsRefCountEachTime()
+	{
+		// Arrange
+		var a = CreateAsset<DummyAssetA>("Alpha");
+		var assetRef = RefOf(a);
+		AssetBank.InitializeForTests(new[] { assetRef });
+
+		// Act
+		AssetBank.LoadAssetByGuid<DummyAssetA>(assetRef.Guid, out _);
+		AssetBank.LoadAssetByGuid<DummyAssetA>(assetRef.Guid, out _);
+
+		// Assert
+		Assert.AreEqual(2, assetRef.RefCount);
+	}
+
+	[Test]
+	public void ReleaseAsset_AfterLoad_DecrementsRefCountAndUnloadsAtZero()
+	{
+		// Arrange
+		var a = CreateAsset<DummyAssetA>("Alpha");
+		var assetRef = RefOf(a);
+		AssetBank.InitializeForTests(new[] { assetRef });
+		AssetBank.LoadAssetByGuid<DummyAssetA>(assetRef.Guid, out _);
+		AssetBank.LoadAssetByGuid<DummyAssetA>(assetRef.Guid, out _);
+
+		// Act
+		AssetBank.ReleaseAsset(assetRef.Guid);
+
+		// Assert: one reference still outstanding
+		Assert.AreEqual(1, assetRef.RefCount);
+		Assert.IsTrue(assetRef.IsLoaded);
+
+		// Act: release the last reference
+		AssetBank.ReleaseAsset(assetRef.Guid);
+
+		// Assert: Local mode's "unload" is a no-op (nothing to free -- see AssetBaseRef.UnloadPhysical),
+		// so IsLoaded stays true even at RefCount 0. Only the count itself needs to reach 0 cleanly.
+		Assert.AreEqual(0, assetRef.RefCount);
+	}
 
 	[Test]
 	public void Release_WithNoActiveReference_LogsWarningAndDoesNotThrow()
@@ -334,8 +392,8 @@ public class Tests_AssetBank
 	[Test]
 	public void LoadAssetByGuid_UnresolvableGuid_ReturnsFalseAndDoesNotLeakRefCount()
 	{
-		// Arrange: a ghost ref is indexable but its GUID resolves to nothing, so the Resources load
-		// underneath Load() fails -- RefCount must stay at 0, or nothing would ever be able to Release it.
+		// Arrange: a ghost ref is indexable but has no DirectRef, so the Local load underneath Load()
+		// fails -- RefCount must stay at 0, or nothing would ever be able to Release it.
 		var ghost = GhostRef<DummyAssetA>("Ghost");
 		AssetBank.InitializeForTests(new[] { ghost });
 		LogAssert.Expect(LogType.Error, new Regex("Failed to load asset"));
@@ -444,7 +502,7 @@ public class Tests_AssetBank
 			Name = "Broken",
 			Guid = "ffffffffffffffffffffffffffffffff",
 			TypeName = "Totally.Unknown.Type, NonExistentAssembly",
-			LoadMode = AssetLoadMode.Resources,
+			LoadMode = AssetLoadMode.Local,
 		};
 		LogAssert.Expect(LogType.Warning, new Regex("Could not resolve type"));
 

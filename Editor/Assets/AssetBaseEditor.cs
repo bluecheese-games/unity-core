@@ -29,9 +29,30 @@ namespace BlueCheese.Core.Editor
 			padding = new RectOffset(3, 0, 1, 0),
 		};
 
+		private static GUIStyle _loadModeInfoStyle;
+
+		private static GUIStyle LoadModeInfoStyle => _loadModeInfoStyle ??= new GUIStyle(EditorStyles.miniLabel)
+		{
+			fontStyle = FontStyle.Italic,
+			normal = { textColor = new Color(0.6f, 0.6f, 0.6f, 0.8f) },
+			padding = new RectOffset(4, 0, 3, 0),
+		};
+
+		// Short label shown next to the LoadMode dropdown, with the full explanation as a tooltip.
+		private static (string Short, string Tooltip) DescribeLoadMode(AssetLoadMode mode) => mode switch
+		{
+			AssetLoadMode.None => ("Not registered",
+				"Excluded from the AssetBank and, unless referenced elsewhere, from the build."),
+			AssetLoadMode.Local => ("Direct reference",
+				"Referenced directly by the AssetBank asset. Always resident once the bank is loaded -- " +
+				"no Resources/Addressables lookup. Suits small, always-needed assets."),
+			AssetLoadMode.Remote => ("Addressables",
+				"Loaded on demand via Addressables. Uses the Bundle Key below to choose which bundle it's packed into."),
+			_ => (string.Empty, string.Empty),
+		};
+
 		private SerializedProperty _nameProperty;
 		private SerializedProperty _tagsProperty;
-		private SerializedProperty _registerProperty;
 		private SerializedProperty _loadModeProperty;
 		private SerializedProperty _bundleKeyProperty;
 
@@ -41,7 +62,6 @@ namespace BlueCheese.Core.Editor
 		{
 			_nameProperty = serializedObject.FindProperty(nameof(_asset.Name));
 			_tagsProperty = serializedObject.FindProperty(nameof(_asset.Tags));
-			_registerProperty = serializedObject.FindProperty(nameof(_asset.RegisterInAssetBank));
 			_loadModeProperty = serializedObject.FindProperty(nameof(_asset.LoadMode));
 			_bundleKeyProperty = serializedObject.FindProperty(nameof(_asset.BundleKey));
 
@@ -67,12 +87,10 @@ namespace BlueCheese.Core.Editor
 			if (_foldout)
 			{
 				EditorGUILayout.BeginHorizontal();
-				EditorGUILayout.PropertyField(_registerProperty);
-				// LoadMode is only meaningful for registered assets, so disable it when unregistered.
-				using (new EditorGUI.DisabledScope(!_registerProperty.boolValue))
-				{
-					EditorGUILayout.PropertyField(_loadModeProperty, GUIContent.none);
-				}
+				EditorGUILayout.PropertyField(_loadModeProperty, GUILayout.MaxWidth(220));
+				var (infoText, infoTooltip) = DescribeLoadMode((AssetLoadMode)_loadModeProperty.enumValueIndex);
+				GUILayout.Label(new GUIContent(infoText, infoTooltip), LoadModeInfoStyle);
+				GUILayout.FlexibleSpace();
 				if (GUILayout.Button("Open Asset Bank", GUILayout.Width(150)))
 				{
 					AssetBank.SelectInProject();
@@ -86,18 +104,18 @@ namespace BlueCheese.Core.Editor
 
 			EditorGUILayout.Separator();
 
-			// Regenerate the bank when a bank-relevant field changes (name, load mode, register,
-			// bundle key typed, or a tag removed). Deferred so it runs outside the GUI pass.
+			// Regenerate the bank when a bank-relevant field changes (name, load mode, bundle key
+			// typed, or a tag removed). Deferred so it runs outside the GUI pass.
 			if (serializedObject.ApplyModifiedProperties())
 				EditorApplication.delayCall += AssetBankGenerator.Regenerate;
 		}
 
 		// Bundle key editor, styled like the Tags field: a free-text input plus a picker that lists
-		// keys already used in the project. Shown only for Addressables-mode assets; if the
+		// keys already used in the project. Shown only for Remote (Addressables) assets; if the
 		// Addressables package is missing, a warning is shown in its place.
 		private void DrawBundleKeyField()
 		{
-			if (_loadModeProperty.enumValueIndex != (int)AssetLoadMode.Addressables)
+			if (_loadModeProperty.enumValueIndex != (int)AssetLoadMode.Remote)
 				return;
 
 #if UNITY_ADDRESSABLES

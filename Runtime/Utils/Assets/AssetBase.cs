@@ -6,10 +6,9 @@ namespace BlueCheese.Core.Utils
 	{
 		[HideInInspector] public string Name = string.Empty;
 		[HideInInspector] public Tags Tags = new();
-		[HideInInspector] public bool RegisterInAssetBank = true;
-		[HideInInspector] public AssetLoadMode LoadMode = AssetLoadMode.Resources;
+		[HideInInspector] public AssetLoadMode LoadMode = AssetLoadMode.Local;
 
-		// Addressables only: assets sharing a bundle key are packed into the same bundle.
+		// Remote (Addressables) only: assets sharing a bundle key are packed into the same bundle.
 		// Empty means the shared default AssetBank group.
 		[HideInInspector] public string BundleKey = string.Empty;
 

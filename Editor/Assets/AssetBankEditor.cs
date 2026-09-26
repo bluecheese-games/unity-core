@@ -9,6 +9,7 @@ namespace BlueCheese.Core.Editor
 	public class AssetBankEditor : UnityEditor.Editor
 	{
 		private SerializedProperty _assetsProperty;
+		private SerializedProperty _debugLoggingProperty;
 
 		private string _searchText = string.Empty;
 		private int _loadModeFilter = 0;
@@ -18,6 +19,7 @@ namespace BlueCheese.Core.Editor
 		private void OnEnable()
 		{
 			_assetsProperty = serializedObject.FindProperty("_assets");
+			_debugLoggingProperty = serializedObject.FindProperty("_debugLogging");
 		}
 
 		public override void OnInspectorGUI()
@@ -28,6 +30,9 @@ namespace BlueCheese.Core.Editor
 			bool regenerateClicked = GUILayout.Button("Regenerate");
 			bool browseClicked = GUILayout.Button("Browse Assets");
 			EditorGUILayout.EndHorizontal();
+
+			EditorGUILayout.PropertyField(_debugLoggingProperty,
+				new GUIContent("Debug Logging", "Log a summary message (\"Regenerated AssetBank in ...ms\") each time the bank regenerates."));
 
 			if (browseClicked)
 			{
@@ -48,7 +53,7 @@ namespace BlueCheese.Core.Editor
 
 			DrawFilters(tagOptions, bundleOptions);
 
-			AssetLoadMode? loadModeFilter = _loadModeFilter <= 0 ? null : (AssetLoadMode)(_loadModeFilter - 1);
+			AssetLoadMode? loadModeFilter = AssetBankFilterUtility.ParseLoadModeOption(AssetBankFilterUtility.LoadModeOptions[_loadModeFilter]);
 			string tagFilter = _tagFilter <= 0 ? null : tagOptions[_tagFilter];
 			string bundleFilter = _bundleFilter <= 0 ? null : bundleOptions[_bundleFilter];
 			string search = _searchText?.Trim();
