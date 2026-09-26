@@ -109,6 +109,42 @@ namespace BlueCheese.Tests.FSM
         }
 
         [Test]
+        public void Test_StateMachine_Build_FromEnum_WithHandlerFactory()
+        {
+            // Arrange
+            var handlerA = new MockStateHandler();
+            var handlerB = new MockStateHandler();
+
+            // Act
+            stateMachine = new StateMachine.Builder()
+                .FromEnum<StateNames>(state => state == StateNames.A ? handlerA : handlerB)
+                .Build();
+            stateMachine.Start();
+
+            // Assert — the handler resolved by the factory for the default state (A) was actually invoked
+            Assert.That(stateMachine.CurrentState, Is.EqualTo(StateNames.A.ToString()));
+            Assert.That(handlerA.OnEnterCallCount, Is.EqualTo(1));
+            Assert.That(handlerB.OnEnterCallCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Test_AddState_WithEnum()
+        {
+            // Arrange
+            var handler = new MockStateHandler();
+
+            // Act
+            stateMachine = new StateMachine.Builder()
+                .AddState(StateNames.A, handler, isDefault: true)
+                .Build();
+            stateMachine.Start();
+
+            // Assert
+            Assert.That(stateMachine.DefaultState, Is.EqualTo(StateNames.A.ToString()));
+            Assert.That(handler.OnEnterCallCount, Is.EqualTo(1));
+        }
+
+        [Test]
         public void Test_GetStateHandler()
         {
             // Arrange

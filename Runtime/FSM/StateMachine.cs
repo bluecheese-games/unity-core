@@ -263,13 +263,29 @@ namespace BlueCheese.Core.FSM
 			private readonly StateMachine _stateMachine = new StateMachine();
 
 			/// <summary>
-			/// Adds states to the state machine from an enum.
+			/// Adds states to the state machine from an enum. States are added handler-less — use
+			/// <see cref="FromEnum{TEnum}(Func{TEnum, IStateHandler})"/> to attach a handler to each state
+			/// inline, or <see cref="GetStateHandler"/> after <see cref="Build"/> otherwise.
 			/// </summary>
 			public Builder FromEnum<TEnum>() where TEnum : Enum
 			{
 				foreach (var state in Enum.GetNames(typeof(TEnum)))
 				{
 					_stateMachine.AddState(state);
+				}
+				return this;
+			}
+
+			/// <summary>
+			/// Adds states to the state machine from an enum, resolving each state's handler via
+			/// <paramref name="handlerFactory"/> (return null for a handler-less state). The first enum
+			/// value becomes the default state, matching <see cref="FromEnum{TEnum}()"/>.
+			/// </summary>
+			public Builder FromEnum<TEnum>(Func<TEnum, IStateHandler> handlerFactory) where TEnum : Enum
+			{
+				foreach (TEnum state in Enum.GetValues(typeof(TEnum)))
+				{
+					_stateMachine.AddState(state.ToString(), handlerFactory?.Invoke(state));
 				}
 				return this;
 			}
@@ -283,6 +299,19 @@ namespace BlueCheese.Core.FSM
 			public Builder AddState(string state, bool isDefault = false)
 			{
 				_stateMachine.AddState(state, null, isDefault);
+				return this;
+			}
+
+			/// <summary>
+			/// Adds a state to the state machine, keyed by an enum value instead of a raw string.
+			/// </summary>
+			/// <param name="state">The enum value naming the state.</param>
+			/// <param name="handler">The handler for the state.</param>
+			/// <param name="isDefault">Whether the state should be set as the default state.</param>
+			/// <returns>The builder instance.</returns>
+			public Builder AddState<TEnum>(TEnum state, IStateHandler handler, bool isDefault = false) where TEnum : Enum
+			{
+				_stateMachine.AddState(state.ToString(), handler, isDefault);
 				return this;
 			}
 
