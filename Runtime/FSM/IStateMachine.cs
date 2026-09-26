@@ -12,7 +12,7 @@ namespace BlueCheese.Core.FSM
         float StateTime { get; }
 		IBlackboard Blackboard { get; }
 
-		void Start();
+		void Start(string initialState = null);
         void Update(float deltaTime);
 
 		CompositeStateHandler GetStateHandler(string name);

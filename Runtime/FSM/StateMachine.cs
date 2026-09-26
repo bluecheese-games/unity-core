@@ -116,9 +116,11 @@ namespace BlueCheese.Core.FSM
 		}
 
 		/// <summary>
-		/// Starts the state machine.
+		/// Starts the state machine, entering <paramref name="initialState"/> (or <see cref="DefaultState"/>
+		/// when null) — useful for a caller that wants to skip straight to a known state instead of always
+		/// replaying the default one (e.g. an app already sitting in the scene that state maps to).
 		/// </summary>
-		public void Start()
+		public void Start(string initialState = null)
 		{
 			if (IsStarted)
 			{
@@ -130,6 +132,11 @@ namespace BlueCheese.Core.FSM
 				throw new InvalidOperationException("Cannot start StateMachine: StateMachine has no state");
 			}
 
+			if (initialState != null && !_stateHandlers.ContainsKey(initialState))
+			{
+				throw new InvalidOperationException($"Cannot start StateMachine: state not found ({initialState})");
+			}
+
 			IsStarted = true;
 
 			// Inject context into every handler before any state is entered
@@ -139,7 +146,7 @@ namespace BlueCheese.Core.FSM
 				composite.Initialize(ctx);
 			}
 
-			SetState(DefaultState);
+			SetState(initialState ?? DefaultState);
 		}
 
 		/// <summary>Lightweight context passed to state handlers on start.</summary>

@@ -299,6 +299,55 @@ namespace BlueCheese.Tests.FSM
         }
 
         [Test]
+        public void Test_StateMachine_Start_WithInitialState()
+        {
+            // Arrange
+            var stateA = "A";
+            var stateB = "B";
+            var handlerB = new MockStateHandler();
+            stateMachine = new StateMachine.Builder()
+                .AddState(stateA, true)
+                .AddState(stateB, handlerB)
+                .Build();
+
+            // Act
+            stateMachine.Start(stateB);
+
+            // Assert — skips straight to B, DefaultState (A) is never entered
+            Assert.That(stateMachine.IsStarted, Is.True);
+            Assert.That(stateMachine.CurrentState, Is.EqualTo(stateB));
+            Assert.That(handlerB.OnEnterCallCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Test_StateMachine_Start_WithNullInitialState_FallsBackToDefault()
+        {
+            // Arrange
+            var stateA = "A";
+            stateMachine = new StateMachine.Builder()
+                .AddState(stateA, true)
+                .Build();
+
+            // Act
+            stateMachine.Start(null);
+
+            // Assert
+            Assert.That(stateMachine.CurrentState, Is.EqualTo(stateA));
+        }
+
+        [Test]
+        public void Test_StateMachine_Start_WithUnknownInitialState_Throws()
+        {
+            // Arrange
+            stateMachine = new StateMachine.Builder()
+                .AddState("A", true)
+                .Build();
+
+            // Act / Assert
+            Assert.Throws<InvalidOperationException>(() => stateMachine.Start("DoesNotExist"));
+        }
+
+        [Test]
         public void Test_Start_Transition_WithoutCondition()
         {
             // Arrange
