@@ -68,7 +68,11 @@ namespace BlueCheese.Core.Utils
 		{
 			string[] searchFolders = _searchScope switch
 			{
-				SearchScope.AllAssets => new string[0], // Search all assets
+				// Scoped to "Assets" only, not AssetDatabase.FindAssets' own default of the whole project
+				// (which also sweeps every installed package's Packages/ folder) -- otherwise a package's
+				// own Sample/demo assets of type T (e.g. unity-app's SampleAudioBank) leak into every
+				// consuming project's collection. Same fix as AssetBankGenerator's own project-asset scan.
+				SearchScope.AllAssets => new[] { "Assets" },
 				SearchScope.CurrentFolder => new string[] { System.IO.Path.GetDirectoryName(UnityEditor.AssetDatabase.GetAssetPath(this)) },
 				SearchScope.SpecificFolders => (_searchFolders ?? Array.Empty<string>())
 					.Where(folder => !string.IsNullOrWhiteSpace(folder)).ToArray(),
