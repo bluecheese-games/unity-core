@@ -48,6 +48,15 @@ namespace BlueCheese.Core.Utils
 
 #if UNITY_EDITOR
 		/// <summary>
+		/// Test seam: replaces the backing list wholesale. <see cref="Items"/> is otherwise read-only by
+		/// design (callers shouldn't be able to mutate a collection out from under whatever iterates it), so
+		/// this is how a test populates a <see cref="Collection{T}"/>-derived asset (e.g. an AudioBank)
+		/// without going through SerializedObject/editor-only APIs. BlueCheese.Core.Tests/BlueCheese.App.Tests
+		/// are granted InternalsVisibleTo (see AssetBank.cs).
+		/// </summary>
+		internal void SetItemsForTests(IEnumerable<T> items) => _items = new List<T>(items);
+
+		/// <summary>
 		/// Whether items can be added, removed, or reordered in the inspector.
 		/// Override to false for collections whose content is managed programmatically.
 		/// </summary>
